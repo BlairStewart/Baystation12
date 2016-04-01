@@ -1,87 +1,44 @@
-/*
- * This datum gets revision info from local svn 'entries' file
- * Path to the directory containing it should be in 'config/svndir.txt' file
- *
- */
+var/global/datum/getrev/revdata = new()
 
-var/global/datum/getrev/revdata = new("config/svndir.txt")
-
-//Oh yeah, I'm an OOP fag, lalala
 /datum/getrev
+	var/branch
 	var/revision
-	var/commiter
-	var/svndirpath
-	var/revhref
+	var/date
+	var/showinfo
 
-	proc/abort()
-		spawn()
-			del src
+/datum/getrev/New()
+	var/list/head_branch = file2list(".git/HEAD", "\n")
+	if(head_branch.len)
+		branch = copytext(head_branch[1], 17)
 
-	New(filename)
-		..()
-		if(!fexists(filename))
-			return abort()
+	var/list/head_log = file2list(".git/logs/HEAD", "\n")
+	for(var/line=head_log.len, line>=1, line--)
+		if(head_log[line])
+			var/list/last_entry = text2list(head_log[line], " ")
+			if(last_entry.len < 2)	continue
+			revision = last_entry[2]
+			// Get date/time
+			if(last_entry.len >= 5)
+				var/unix_time = text2num(last_entry[5])
+				if(unix_time)
+					date = unix2date(unix_time)
+			break
 
-		var/text = file2text(file(filename))
-		if(!text)
-			diary << "Unable to get [filename] contents, aborting"
-			return abort()
-
-		var/list/CL = tg_text2list(text, "\n")
-		for (var/t in CL)
-			if (!t)
-				continue
-			t = trim(t)
-			if (length(t) == 0)
-				continue
-			else if (copytext(t, 1, 2) == "#")
-				continue
-			var/pos = findtext(t, " ")
-			var/name = null
-			var/value = null
-			if (pos)
-				name = lowertext(copytext(t, 1, pos))
-				value = copytext(t, pos + 1)
-			else
-				name = lowertext(t)
-			if(!name)
-				continue
-			switch(name)
-				if("svndir")
-					svndirpath = value
-				if("revhref")
-					revhref = value
-
-		if(svndirpath && fexists(svndirpath) && fexists("[svndirpath]/entries") && isfile(file("[svndirpath]/entries")))
-			var/list/filelist = dd_file2list("[svndirpath]/entries",null)
-			revision = filelist[4]
-			commiter = filelist[12]
-			diary << "Revision info loaded succesfully"
-			return
-		return abort()
-
-	proc/getRevisionText()
-		var/output
-		if(revhref)
-			output = {"<a href="[revhref][revision]">[revision]</a>"}
-		else
-			output = revision
-		return output
-
-	proc/showInfo()
-		return {"<html>
-					<head>
-					</head>
-					<body>
-					<p><b>Server Revision:</b> [getRevisionText()]<br/>
-					<b>Author:</b> [commiter]</p>
-					</body>
-					<html>"}
+	world.log << "Running revision:"
+	world.log << branch
+	world.log << date
+	world.log << revision
 
 client/verb/showrevinfo()
 	set category = "OOC"
 	set name = "Show Server Revision"
-	var/output =  "Sorry, the revision info is unavailable."
-	output = file2text("/home/bay12/live/data/gitcommit")
-	usr << browse(output,"window=revdata");
-	return
+	set desc = "Check the current server code revision"
+
+	if(revdata.revision)
+		src << "<b>Server revision:</b> [revdata.branch] - [revdata.date]"
+		if(config.githuburl)
+			src << "<a href='[config.githuburl]/commit/[revdata.revision]'>[revdata.revision]</a>"
+		else
+			src << revdata.revision
+	else
+		src << "Revision unknown"

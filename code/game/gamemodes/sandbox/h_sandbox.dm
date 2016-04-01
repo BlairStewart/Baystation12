@@ -1,6 +1,7 @@
-var
-	hsboxspawn = 1
-	list
+//This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:31
+
+var/hsboxspawn = 1
+var/list
 		hrefs = list(
 					"hsbsuit" = "Suit Up (Space Travel Gear)",
 					"hsbmetal" = "Spawn 50 Metal",
@@ -15,8 +16,7 @@ var
 					"hsbmedkit" = "Spawn Medical Kit")
 
 mob
-	var
-		datum/hSB/sandbox = null
+	var/datum/hSB/sandbox = null
 	proc
 		CanBuild()
 			if(master_mode == "sandbox")
@@ -30,9 +30,8 @@ mob
 				sandbox.update()
 
 datum/hSB
-	var
-		owner = null
-		admin = 0
+	var/owner = null
+	var/admin = 0
 	proc
 		update()
 			var/hsbpanel = "<center><b>h_Sandbox Panel</b></center><hr>"
@@ -84,7 +83,7 @@ datum/hSB
 						P.back.loc = P.loc
 						P.back.layer = initial(P.back.layer)
 						P.back = null
-					P.back = new/obj/item/weapon/tank/jetpack/oxygen(P)
+					P.back = new/obj/item/weapon/tank/jetpack(P)
 					P.back.layer = 20
 					P.internal = P.back
 				if("hsbmetal")
@@ -106,7 +105,7 @@ datum/hSB
 							hsb.req_access += A
 
 					hsb.loc = usr.loc
-					usr << "<b>Sandbox:  Created an airlock."
+					usr << "<b>Sandbox:  Created an airlock.</b>"
 				if("hsbcanister")
 					var/list/hsbcanisters = typesof(/obj/machinery/portable_atmospherics/canister/) - /obj/machinery/portable_atmospherics/canister/
 					var/hsbcanister = input(usr, "Choose a canister to spawn.", "Sandbox:") in hsbcanisters + "Cancel"
@@ -121,7 +120,7 @@ datum/hSB
 				if("hsbtoolbox")
 					var/obj/item/weapon/storage/hsb = new/obj/item/weapon/storage/toolbox/mechanical
 					for(var/obj/item/device/radio/T in hsb)
-						del(T)
+						qdel(T)
 					new/obj/item/weapon/crowbar (hsb)
 					hsb.loc = usr.loc
 				if("hsbmedkit")
@@ -137,15 +136,13 @@ datum/hSB
 							continue
 						if(istype(O, /obj/item/assembly))
 							continue
-						if(istype(O, /obj/item/weapon/camera))
+						if(istype(O, /obj/item/device/camera))
 							continue
 						if(istype(O, /obj/item/weapon/cloaking_device))
 							continue
 						if(istype(O, /obj/item/weapon/dummy))
 							continue
 						if(istype(O, /obj/item/weapon/melee/energy/sword))
-							continue
-						if(istype(O, /obj/effect/critter))
 							continue
 						if(istype(O, /obj/structure))
 							continue

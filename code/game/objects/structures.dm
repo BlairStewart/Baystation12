@@ -1,194 +1,188 @@
-obj/structure
-	icon = 'structures.dmi'
+/obj/structure
+	icon = 'icons/obj/structures.dmi'
+	w_class = 10
 
-/obj/structure/girder
-	icon_state = "girder"
-	anchored = 1
-	density = 1
-	layer = 2
-	var/state = 0
+	var/climbable
+	var/breakable
+	var/parts
+	var/list/climbers = list()
 
-	attackby(obj/item/W as obj, mob/user as mob)
-		if(istype(W, /obj/item/weapon/wrench) && state == 0 && anchored && !istype(src,/obj/structure/girder/displaced))
-			playsound(src.loc, 'Ratchet.ogg', 100, 1)
-			user << "\blue Now disassembling the girder"
-			if(do_after(user,40))
-				user << "\blue You dissasembled the girder!"
-				new /obj/item/stack/sheet/metal(get_turf(src))
-				del(src)
+/obj/structure/Destroy()
+	if(parts)
+		new parts(loc)
+	..()
 
-		else if(istype(W, /obj/item/weapon/pickaxe/plasmacutter))
-			user << "\blue Now slicing apart the girder"
-			if(do_after(user,30))
-				user << "\blue You slice apart the girder!"
-			new /obj/item/stack/sheet/metal(get_turf(src))
-			del(src)
+/obj/structure/attack_hand(mob/user)
+	if(breakable)
+		if(HULK in user.mutations)
+			user.say(pick(";RAAAAAAAARGH!", ";HNNNNNNNNNGGGGGGH!", ";GWAAAAAAAARRRHHH!", "NNNNNNNNGGGGGGGGHH!", ";AAAAAAARRRGH!" ))
+			attack_generic(user,1,"smashes")
+		else if(istype(user,/mob/living/carbon/human))
+			var/mob/living/carbon/human/H = user
+			if(H.species.can_shred(user))
+				attack_generic(user,1,"slices")
 
-		else if(istype(W, /obj/item/weapon/pickaxe/diamonddrill))
-			user << "\blue You drill through the girder!"
-			new /obj/item/stack/sheet/metal(get_turf(src))
-			del(src)
+	if(climbers.len && !(user in climbers))
+		user.visible_message("<span class='warning'>[user.name] shakes \the [src].</span>", \
+					"<span class='notice'>You shake \the [src].</span>")
+		structure_shaken()
 
-		else if((istype(W, /obj/item/stack/sheet/metal)) && (W:amount >= 2) && istype(src,/obj/structure/girder/displaced))
-			W:use(2)
-			user << "\blue You create a false wall! Push on it to open or close the passage."
-			new /obj/structure/falsewall (src.loc)
-			del(src)
+	return ..()
 
-		else if(istype(W, /obj/item/stack/sheet/r_metal) && istype(src,/obj/structure/girder/displaced))
-			W:use(2)
-			user << "\blue You create a false r wall! Push on it to open or close the passage."
-			new /obj/structure/falserwall (src.loc)
-			del(src)
-
-		else if(istype(W, /obj/item/weapon/screwdriver) && state == 2 && istype(src,/obj/structure/girder/reinforced))
-			playsound(src.loc, 'Screwdriver.ogg', 100, 1)
-			user << "\blue Now unsecuring support struts"
-			if(do_after(user,40))
-				user << "\blue You unsecured the support struts!"
-				state = 1
-
-		else if(istype(W, /obj/item/weapon/wirecutters) && istype(src,/obj/structure/girder/reinforced) && state == 1)
-			playsound(src.loc, 'Wirecutter.ogg', 100, 1)
-			user << "\blue Now removing support struts"
-			if(do_after(user,40))
-				user << "\blue You removed the support struts!"
-				new/obj/structure/girder( src.loc )
-				del(src)
-
-		else if(istype(W, /obj/item/weapon/crowbar) && state == 0 && anchored )
-			playsound(src.loc, 'Crowbar.ogg', 100, 1)
-			user << "\blue Now dislodging the girder"
-			if(do_after(user, 40))
-				user << "\blue You dislodged the girder!"
-				new/obj/structure/girder/displaced( src.loc )
-				del(src)
-
-		else if(istype(W, /obj/item/weapon/wrench) && state == 0 && !anchored )
-			playsound(src.loc, 'Ratchet.ogg', 100, 1)
-			user << "\blue Now securing the girder"
-			if(get_turf(user, 40))
-				user << "\blue You secured the girder!"
-				new/obj/structure/girder( src.loc )
-				del(src)
-
-		else if((istype(W, /obj/item/stack/sheet/metal)) && (W:amount >= 2))
-			user << "\blue Now adding plating..."
-			if (do_after(user,40))
-				if(!W)
-					return
-				user << "\blue You added the plating!"
-				var/turf/Tsrc = get_turf(src)
-				Tsrc.ReplaceWithWall()
-				for(var/obj/machinery/atmospherics/pipe/P in Tsrc)
-					P.layer = 1
-				W:use(2)
-				del(src)
-			return
-
-		else if (istype(W, /obj/item/stack/sheet/r_metal))
-			if (src.icon_state == "reinforced") //Time to finalize!
-				user << "\blue Now finalising reinforced wall."
-				if(do_after(user, 50))
-					if(!W)
-						return
-					user << "\blue Wall fully reinforced!"
-					var/turf/Tsrc = get_turf(src)
-					Tsrc.ReplaceWithRWall()
-					for(var/obj/machinery/atmospherics/pipe/P in Tsrc)
-						P.layer = 1
-					if (W)
-						W:use(1)
-					del(src)
-					return
-			else
-				user << "\blue Now reinforcing girders"
-				if (do_after(user,60))
-					if(!W)
-						return
-					user << "\blue Girders reinforced!"
-					W:use(1)
-					new/obj/structure/girder/reinforced( src.loc )
-					del(src)
-					return
-		else if(istype(W, /obj/item/pipe))
-			var/obj/item/pipe/P = W
-			if (P.pipe_type in list(0, 1, 5))	//simple pipes, simple bends, and simple manifolds.
-				user.drop_item()
-				P.loc = src.loc
-				user << "\blue You fit the pipe into the [src]!"
-		else
-			..()
-
-
-	blob_act()
-		if(prob(40))
-			del(src)
-
-
-	ex_act(severity)
-		switch(severity)
-			if(1.0)
-				del(src)
-				return
-			if(2.0)
-				if (prob(30))
-					var/remains = pick(/obj/item/stack/rods,/obj/item/stack/sheet/metal)
-					new remains(loc)
-					del(src)
-				return
-			if(3.0)
-				if (prob(5))
-					var/remains = pick(/obj/item/stack/rods,/obj/item/stack/sheet/metal)
-					new remains(loc)
-					del(src)
-				return
-			else
-		return
-
-
-/obj/structure/girder/displaced
-	icon_state = "displaced"
-	anchored = 0
-
-/obj/structure/girder/reinforced
-	icon_state = "reinforced"
-	state = 2
-// LATTICE
-
-
-/obj/structure/lattice/blob_act()
-	del(src)
+/obj/structure/attack_tk()
 	return
 
-/obj/structure/lattice/ex_act(severity)
+/obj/structure/ex_act(severity)
 	switch(severity)
 		if(1.0)
-			del(src)
+			qdel(src)
 			return
 		if(2.0)
-			del(src)
-			return
+			if(prob(50))
+				qdel(src)
+				return
 		if(3.0)
 			return
-		else
-	return
 
-/obj/structure/lattice/attackby(obj/item/C as obj, mob/user as mob)
+/obj/structure/New()
+	..()
+	if(climbable)
+		verbs += /obj/structure/proc/climb_on
 
-	if (istype(C, /obj/item/stack/tile))
+/obj/structure/Destroy()
+	..()
 
-		C:build(get_turf(src))
-		C:use(1)
-		playsound(src.loc, 'Genhit.ogg', 50, 1)
-		if (C)
-			C.add_fingerprint(user)
-		del(src)
+/obj/structure/proc/climb_on()
+
+	set name = "Climb structure"
+	set desc = "Climbs onto a structure."
+	set category = "Object"
+	set src in oview(1)
+
+	do_climb(usr)
+
+/obj/structure/MouseDrop_T(mob/target, mob/user)
+
+	var/mob/living/H = user
+	if(istype(H) && can_climb(H) && target == user)
+		do_climb(target)
+	else
+		return ..()
+
+/obj/structure/proc/can_climb(var/mob/living/user, post_climb_check=0)
+	if (!climbable || !can_touch(user) || (!post_climb_check && (user in climbers)))
+		return 0
+
+	if (!user.Adjacent(src))
+		user << "<span class='danger'>You can't climb there, the way is blocked.</span>"
+		return 0
+
+	var/obj/occupied = turf_is_crowded()
+	if(occupied)
+		user << "<span class='danger'>There's \a [occupied] in the way.</span>"
+		return 0
+	return 1
+
+/obj/structure/proc/turf_is_crowded()
+	var/turf/T = get_turf(src)
+	if(!T || !istype(T))
+		return 0
+	for(var/obj/O in T.contents)
+		if(istype(O,/obj/structure))
+			var/obj/structure/S = O
+			if(S.climbable) continue
+		if(O && O.density && !(O.flags & ON_BORDER)) //ON_BORDER structures are handled by the Adjacent() check.
+			return O
+	return 0
+
+/obj/structure/proc/do_climb(var/mob/living/user)
+	if (!can_climb(user))
 		return
-	if (istype(C, /obj/item/weapon/weldingtool) && C:welding)
-		user << "\blue Slicing lattice joints ..."
-		C:eyecheck(user)
-		new /obj/item/stack/rods(src.loc)
-		del(src)
 
+	usr.visible_message("<span class='warning'>[user] starts climbing onto \the [src]!</span>")
+	climbers |= user
+
+	if(!do_after(user,50))
+		climbers -= user
+		return
+
+	if (!can_climb(user, post_climb_check=1))
+		climbers -= user
+		return
+
+	usr.forceMove(get_turf(src))
+
+	if (get_turf(user) == get_turf(src))
+		usr.visible_message("<span class='warning'>[user] climbs onto \the [src]!</span>")
+	climbers -= user
+
+/obj/structure/proc/structure_shaken()
+	for(var/mob/living/M in climbers)
+		M.Weaken(1)
+		M << "<span class='danger'>You topple as you are shaken off \the [src]!</span>"
+		climbers.Cut(1,2)
+
+	for(var/mob/living/M in get_turf(src))
+		if(M.lying) return //No spamming this on people.
+
+		M.Weaken(3)
+		M << "<span class='danger'>You topple as \the [src] moves under you!</span>"
+
+		if(prob(25))
+
+			var/damage = rand(15,30)
+			var/mob/living/carbon/human/H = M
+			if(!istype(H))
+				H << "<span class='danger'>You land heavily!</span>"
+				M.adjustBruteLoss(damage)
+				return
+
+			var/obj/item/organ/external/affecting
+
+			switch(pick(list("ankle","wrist","head","knee","elbow")))
+				if("ankle")
+					affecting = H.get_organ(pick("l_foot", "r_foot"))
+				if("knee")
+					affecting = H.get_organ(pick("l_leg", "r_leg"))
+				if("wrist")
+					affecting = H.get_organ(pick("l_hand", "r_hand"))
+				if("elbow")
+					affecting = H.get_organ(pick("l_arm", "r_arm"))
+				if("head")
+					affecting = H.get_organ("head")
+
+			if(affecting)
+				M << "<span class='danger'>You land heavily on your [affecting.name]!</span>"
+				affecting.take_damage(damage, 0)
+				if(affecting.parent)
+					affecting.parent.add_autopsy_data("Misadventure", damage)
+			else
+				H << "<span class='danger'>You land heavily!</span>"
+				H.adjustBruteLoss(damage)
+
+			H.UpdateDamageIcon()
+			H.updatehealth()
 	return
+
+/obj/structure/proc/can_touch(var/mob/user)
+	if (!user)
+		return 0
+	if(!Adjacent(user))
+		return 0
+	if (user.restrained() || user.buckled)
+		user << "<span class='notice'>You need your hands and legs free for this.</span>"
+		return 0
+	if (user.stat || user.paralysis || user.sleeping || user.lying || user.weakened)
+		return 0
+	if (issilicon(user))
+		user << "<span class='notice'>You need hands for this.</span>"
+		return 0
+	return 1
+
+/obj/structure/attack_generic(var/mob/user, var/damage, var/attack_verb, var/wallbreaker)
+	if(!breakable || !damage || !wallbreaker)
+		return 0
+	visible_message("<span class='danger'>[user] [attack_verb] the [src] apart!</span>")
+	user.do_attack_animation(src)
+	spawn(1) qdel(src)
+	return 1

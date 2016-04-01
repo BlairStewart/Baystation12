@@ -4,9 +4,10 @@
 	set name = ".map"
 	set category = "Object"
 	set src in view(1)
-	usr.machine = src
+	usr.set_machine(src)
+	if(!mapping)	return
 
-	log_game("[usr]([usr.key]) used station map L[maplevel] in [src.loc.loc]")
+	log_game("[usr]([usr.key]) used station map L[z] in [src.loc.loc]")
 
 	src.drawmap(usr)
 
@@ -26,8 +27,8 @@
 #ifdef AMAP
 
 	for(var/i = 0; i<icount; i++)
-		imap += icon('imap.dmi', "blank")
-		imap += icon('imap.dmi', "blank")
+		imap += icon('icons/misc/imap.dmi', "blank")
+		imap += icon('icons/misc/imap.dmi', "blank")
 
 	//world << "[icount] images in list"
 
@@ -36,7 +37,7 @@
 
 		for(var/wy = 1; wy <= world.maxy; wy++)
 
-			var/turf/T = locate(wx, wy, maplevel)
+			var/turf/T = locate(wx, wy, z)
 
 			var/colour
 			var/colour2
@@ -60,7 +61,7 @@
 							sense = 0
 							colour = rgb(130,130,130)
 
-					if("/turf/simulated/floor/engine")
+					if("/turf/simulated/floor/reinforced")
 						colour = rgb(128,128,128)
 
 					if("/turf/simulated/wall")
@@ -122,8 +123,9 @@
 					colour = rgb(red, green, blue)
 
 			if(!colour2 && !T.density)
-
-				var/turf_total = T.co2 + T.oxygen + T.poison + T.sl_gas + T.n2
+				var/datum/gas_mixture/environment = T.return_air()
+				var/turf_total = environment.total_moles()
+				//var/turf_total = T.co2 + T.oxygen + T.poison + T.sl_gas + T.n2
 
 
 				var/t1 = turf_total / MOLES_CELLSTANDARD * 150
@@ -178,21 +180,21 @@
 		HI.Insert(I, frame=1, delay = 5)
 		HI.Insert(J, frame=2, delay = 5)
 
-		del(I)
-		del(J)
+		qdel(I)
+		qdel(J)
 		H.icon = HI
 		H.layer = 25
 		usr.mapobjs += H
 #else
 
 	for(var/i = 0; i<icount; i++)
-		imap += icon('imap.dmi', "blank")
+		imap += icon('icons/misc/imap.dmi', "blank")
 
 	for(var/wx = 1 ; wx <= world.maxx; wx++)
 
 		for(var/wy = 1; wy <= world.maxy; wy++)
 
-			var/turf/T = locate(wx, wy, maplevel)
+			var/turf/T = locate(wx, wy, z)
 
 			var/colour
 
@@ -206,9 +208,9 @@
 						colour = rgb(10,10,10)
 						sense = 0
 
-					if("/turf/simulated/floor", "/turf/simulated/floor/engine")
+					if("/turf/simulated/floor/tiled", "/turf/simulated/floor/reinforced")
 						var/datum/gas_mixture/environment = T.return_air()
-						var/turf_total = environment.total_moles()
+						var/turf_total = environment.total_moles
 						var/t1 = turf_total / MOLES_CELLSTANDARD * 175
 
 						if(t1<=100)
@@ -284,7 +286,7 @@
 
 			//world << "icon: \icon[I]"
 
-			I.DrawBox(colour, rx, ry, rx+1, ry+1)
+			I.DrawBox(colour, rx, ry, rx, ry)
 
 
 	user.clearmap()
@@ -304,7 +306,7 @@
 		var/icon/I = imap[i+1]
 
 		H.icon = I
-		del(I)
+		qdel(I)
 		H.layer = 25
 		usr.mapobjs += H
 
@@ -351,8 +353,8 @@ proc/getb(col)
 /mob/proc/clearmap()
 	src.client.screen -= src.mapobjs
 	for(var/obj/screen/O in mapobjs)
-		del(O)
+		qdel(O)
 
 	mapobjs = null
-	src.machine = null
+	src.unset_machine()
 

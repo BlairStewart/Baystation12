@@ -2,8 +2,8 @@
 
 
 /obj/machinery/mineral/unloading_machine
-	name = "Unloading machine"
-	icon = 'mining_machines.dmi'
+	name = "unloading machine"
+	icon = 'icons/obj/machines/mining_machines.dmi'
 	icon_state = "unloader"
 	density = 1
 	anchored = 1.0
@@ -20,7 +20,6 @@
 		for (var/dir in cardinal)
 			src.output = locate(/obj/machinery/mineral/output, get_step(src, dir))
 			if(src.output) break
-		processing_objects.Add(src)
 		return
 	return
 

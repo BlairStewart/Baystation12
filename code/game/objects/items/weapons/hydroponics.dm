@@ -1,135 +1,113 @@
 /*
+ * SeedBag
+ */
+//uncomment when this is updated to match storage update
+/*
+/obj/item/weapon/seedbag
+	icon = 'icons/obj/hydroponics_machines.dmi'
+	icon_state = "seedbag"
+	name = "Seed Bag"
+	desc = "A small satchel made for organizing seeds."
+	var/mode = 1;  //0 = pick one at a time, 1 = pick all on tile
+	var/capacity = 500; //the number of seeds it can carry.
+	slot_flags = SLOT_BELT
+	w_class = 1
+	var/list/item_quants = list()
 
-CONTAINS:
-Plant-B-Gone
-Nettle
-Deathnettle
+/obj/item/weapon/seedbag/attack_self(mob/user as mob)
+	user.machine = src
+	interact(user)
 
-*/
+/obj/item/weapon/seedbag/verb/toggle_mode()
+	set name = "Switch Bagging Method"
+	set category = "Object"
 
+	mode = !mode
+	switch (mode)
+		if(1)
+			usr << "The bag now picks up all seeds in a tile at once."
+		if(0)
+			usr << "The bag now picks up one seed pouch at a time."
 
-// Plant-B-Gone
-/obj/item/weapon/plantbgone/New()
-	var/datum/reagents/R = new/datum/reagents(100) // 100 units of solution
-	reagents = R
-	R.my_atom = src
-	R.add_reagent("plantbgone", 100)
-
-/obj/item/weapon/plantbgone/attack(mob/living/carbon/human/M as mob, mob/user as mob)
-	return
-
-/obj/item/weapon/plantbgone/afterattack(atom/A as mob|obj, mob/user as mob)
-
-	if (istype(A, /obj/item/weapon/storage/backpack ))
-		return
-
-	else if (locate (/obj/structure/table, src.loc))
-		return
-
-	else if (src.reagents.total_volume < 1)
-		src.empty = 1
-		user << "\blue Add more Plant-B-Gone mixture!"
-		return
-
-	else
-		src.empty = 0
-
-		if (istype(A, /obj/machinery/hydroponics)) // We are targeting hydrotray
-			return
-
-		else if (istype(A, /obj/effect/blob)) // blob damage in blob code
-			return
-
-		else
-			var/obj/effect/decal/D = new/obj/effect/decal/(get_turf(src)) // Targeting elsewhere
-			D.name = "chemicals"
-			D.icon = 'chemical.dmi'
-			D.icon_state = "weedpuff"
-			D.create_reagents(5)
-			src.reagents.trans_to(D, 5) // 5 units of solution used at a time => 20 uses
-			playsound(src.loc, 'spray3.ogg', 50, 1, -6)
-
-			spawn(0)
-				for(var/i=0, i<3, i++) // Max range = 3 tiles
-					step_towards(D,A) // Moves towards target as normally (not thru walls)
-					D.reagents.reaction(get_turf(D))
-					for(var/atom/T in get_turf(D))
-						D.reagents.reaction(T)
-					sleep(4)
-				del(D)
-
-
-			if((src.reagents.has_reagent("pacid")) || (src.reagents.has_reagent("lube"))) 	   				// Messages admins if someone sprays polyacid or space lube from a Plant-B-Gone bottle.
-				message_admins("[key_name_admin(user)] fired Polyacid/Space lube from a PlantBGone bottle.")		// Polymorph
-				log_game("[key_name(user)] fired Polyacid/Space lube from a PlantBGone bottle.")
-
-
-			return
-
-/obj/item/weapon/plantbgone/examine()
-	set src in usr
-	usr << text("\icon[] [] units of Plant-B-Gone left!", src, src.reagents.total_volume)
+/obj/item/seeds/attackby(var/obj/item/O as obj, var/mob/user as mob)
 	..()
+	if (istype(O, /obj/item/weapon/seedbag))
+		var/obj/item/weapon/seedbag/S = O
+		if (S.mode == 1)
+			for (var/obj/item/seeds/G in locate(src.x,src.y,src.z))
+				if (S.contents.len < S.capacity)
+					S.contents += G;
+					if(S.item_quants[G.name])
+						S.item_quants[G.name]++
+					else
+						S.item_quants[G.name] = 1
+				else
+					user << "<span class='warning'>The seed bag is full.</span>"
+					S.updateUsrDialog()
+					return
+			user << "<span class='notice'>You pick up all the seeds.</span>"
+		else
+			if (S.contents.len < S.capacity)
+				S.contents += src;
+				if(S.item_quants[name])
+					S.item_quants[name]++
+				else
+					S.item_quants[name] = 1
+			else
+				user << "<span class='warning'>The seed bag is full.</span>"
+		S.updateUsrDialog()
 	return
 
-// Sunflower
-/obj/item/weapon/grown/sunflower/attack(mob/M as mob, mob/user as mob)
-	M << "<font color='green'><b> [user] smacks you with a sunflower!</font><font color='yellow'><b>FLOWER POWER<b></font>"
-	user << "<font color='green'> Your sunflower's </font><font color='yellow'><b>FLOWER POWER</b></font><font color='green'> strikes [M]</font>"
+/obj/item/weapon/seedbag/interact(mob/user as mob)
 
-// Nettle
+	var/dat = "<TT><b>Select an item:</b><br>"
 
-/obj/item/weapon/grown/nettle/pickup(mob/living/carbon/human/user as mob)
-	if(!user.gloves)
-		user << "\red The nettle burns your bare hand!"
-		if(istype(user, /mob/living/carbon/human))
-			var/organ = ((user.hand ? "l_":"r_") + "arm")
-			var/datum/organ/external/affecting = user.get_organ(organ)
-			affecting.take_damage(0,force)
-		else
-			user.take_organ_damage(0,force)
-
-/obj/item/weapon/grown/nettle/afterattack(atom/A as mob|obj, mob/user as mob)
-	if(force > 0)
-		force -= rand(1,(force/3)+1) // When you whack someone with it, leaves fall off
+	if (contents.len == 0)
+		dat += "<font color = 'red'>No seeds loaded!</font>"
 	else
-		usr << "All the leaves have fallen off the nettle from violent whacking."
-		del(src)
+		for (var/O in item_quants)
+			if(item_quants[O] > 0)
+				var/N = item_quants[O]
+				dat += "<FONT color = 'blue'><B>[capitalize(O)]</B>:"
+				dat += " [N] </font>"
+				dat += "<a href='byond://?src=\ref[src];vend=[O]'>Vend</A>"
+				dat += "<br>"
 
+		dat += "<br><a href='byond://?src=\ref[src];unload=1'>Unload All</A>"
+		dat += "</TT>"
+	user << browse("<HEAD><TITLE>Seedbag Supplies</TITLE></HEAD><TT>[dat]</TT>", "window=seedbag")
+	onclose(user, "seedbag")
+	return
 
-// Deathnettle
+/obj/item/weapon/seedbag/Topic(href, href_list)
+	if(..())
+		return
 
-/obj/item/weapon/grown/deathnettle/pickup(mob/living/carbon/human/user as mob)
-	if(!user.gloves)
-		if(istype(user, /mob/living/carbon/human))
-			var/organ = ((user.hand ? "l_":"r_") + "arm")
-			var/datum/organ/external/affecting = user.get_organ(organ)
-			affecting.take_damage(0,force)
-		else
-			user.take_organ_damage(0,force)
-		if(prob(50))
-			user.Paralyse(5)
-			user << "\red You are stunned by the Deathnettle when you try picking it up!"
+	usr.machine = src
+	if ( href_list["vend"] )
+		var/N = href_list["vend"]
 
-/obj/item/weapon/grown/deathnettle/attack(mob/living/carbon/M as mob, mob/user as mob)
-	if(!..()) return
-	if(istype(M, /mob/living))
-		M << "\red You are stunned by the powerful acid of the Deathnettle!"
-		M.attack_log += text("\[[time_stamp()]\] <font color='orange'>Had the [src.name] used on them by [user.name] ([user.ckey])</font>")
-		user.attack_log += text("\[[time_stamp()]\] <font color='red'>Used the [src.name] on [M.name] ([M.ckey])</font>")
-		log_admin("ATTACK: [user] ([user.ckey]) attacked [M] ([M.ckey]) with [src].")
-		message_admins("ATTACK: [user] ([user.ckey]) attacked [M] ([M.ckey]) with [src].")
+		if(item_quants[N] <= 0) // Sanity check, there are probably ways to press the button when it shouldn't be possible.
+			return
 
-		M.eye_blurry += force/7
-		if(prob(20))
-			M.Paralyse(force/6)
-			M.Weaken(force/15)
-		M.drop_item()
+		item_quants[N] -= 1
+		for(var/obj/O in contents)
+			if(O.name == N)
+				O.loc = get_turf(src)
+				usr.put_in_hands(O)
+				break
 
-/obj/item/weapon/grown/deathnettle/afterattack(atom/A as mob|obj, mob/user as mob)
-	if (force > 0)
-		force -= rand(1,(force/3)+1) // When you whack someone with it, leaves fall off
+	else if ( href_list["unload"] )
+		item_quants.Cut()
+		for(var/obj/O in contents )
+			O.loc = get_turf(src)
 
-	else
-		usr << "All the leaves have fallen off the deathnettle from violent whacking."
-		del(src)
+	src.updateUsrDialog()
+	return
+
+/obj/item/weapon/seedbag/updateUsrDialog()
+	var/list/nearby = range(1, src)
+	for(var/mob/M in nearby)
+		if ((M.client && M.machine == src))
+			src.attack_self(M)
+*/

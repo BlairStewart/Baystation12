@@ -1,26 +1,34 @@
-macro "macro"
+macro "borghotkeymode"
+	elem 
+		name = "TAB"
+		command = ".winset \"mainwindow.macro=borgmacro hotkey_toggle.is-checked=false input.focus=true input.background-color=#D3B5B5\""
+		is-disabled = false
 	elem 
 		name = "CENTER+REP"
 		command = ".center"
 		is-disabled = false
 	elem 
-		name = "NORTHEAST+REP"
+		name = "NORTHEAST"
 		command = ".northeast"
 		is-disabled = false
 	elem 
-		name = "SOUTHEAST+REP"
+		name = "SOUTHEAST"
 		command = ".southeast"
 		is-disabled = false
 	elem 
-		name = "SOUTHWEST+REP"
+		name = "SOUTHWEST"
 		command = ".southwest"
 		is-disabled = false
 	elem 
-		name = "NORTHWEST+REP"
+		name = "NORTHWEST"
 		command = ".northwest"
 		is-disabled = false
 	elem 
-		name = "SHIFT+WEST"
+		name = "ALT+WEST"
+		command = "westfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+WEST"
 		command = "westface"
 		is-disabled = false
 	elem 
@@ -28,7 +36,11 @@ macro "macro"
 		command = ".west"
 		is-disabled = false
 	elem 
-		name = "SHIFT+NORTH"
+		name = "ALT+NORTH"
+		command = "northfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+NORTH"
 		command = "northface"
 		is-disabled = false
 	elem 
@@ -36,7 +48,11 @@ macro "macro"
 		command = ".north"
 		is-disabled = false
 	elem 
-		name = "SHIFT+EAST"
+		name = "ALT+EAST"
+		command = "eastfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+EAST"
 		command = "eastface"
 		is-disabled = false
 	elem 
@@ -44,7 +60,11 @@ macro "macro"
 		command = ".east"
 		is-disabled = false
 	elem 
-		name = "SHIFT+SOUTH"
+		name = "ALT+SOUTH"
+		command = "southfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+SOUTH"
 		command = "southface"
 		is-disabled = false
 	elem 
@@ -52,64 +72,148 @@ macro "macro"
 		command = ".south"
 		is-disabled = false
 	elem 
-		name = "CTRL+A"
-		command = "toggle-throw-mode"
+		name = "INSERT"
+		command = "a-intent right"
 		is-disabled = false
 	elem 
-		name = "CTRL+D"
-		command = "drop-item"
+		name = "DELETE"
+		command = "delete-key-pressed"
 		is-disabled = false
 	elem 
-		name = "CTRL+E"
-		command = "_changeintent 1"
+		name = "1"
+		command = "toggle-module 1"
 		is-disabled = false
 	elem 
-		name = "CTRL+Q"
-		command = "_changeintent -1"
+		name = "CTRL+1"
+		command = "toggle-module 1"
 		is-disabled = false
 	elem 
-		name = "CTRL+S"
-		command = "swap-hand"
+		name = "2"
+		command = "toggle-module 2"
 		is-disabled = false
 	elem 
-		name = "CTRL+W"
-		command = "attack-self"
+		name = "CTRL+2"
+		command = "toggle-module 2"
 		is-disabled = false
 	elem 
-		name = "NUMPAD2+REP"
-		command = ".south"
+		name = "3"
+		command = "toggle-module 3"
 		is-disabled = false
 	elem 
-		name = "NUMPAD4+REP"
+		name = "CTRL+3"
+		command = "toggle-module 3"
+		is-disabled = false
+	elem 
+		name = "4"
+		command = "a-intent left"
+		is-disabled = false
+	elem 
+		name = "CTRL+4"
+		command = "a-intent left"
+		is-disabled = false
+	elem 
+		name = "5"
+		command = ".me"
+		is-disabled = false
+	elem 
+		name = "A+REP"
 		command = ".west"
 		is-disabled = false
 	elem 
-		name = "NUMPAD5+REP"
-		command = ".center"
+		name = "CTRL+A+REP"
+		command = ".west"
 		is-disabled = false
 	elem 
-		name = "NUMPAD6+REP"
+		name = "D+REP"
 		command = ".east"
 		is-disabled = false
 	elem 
-		name = "NUMPAD8+REP"
+		name = "CTRL+D+REP"
+		command = ".east"
+		is-disabled = false
+	elem 
+		name = "F"
+		command = "a-intent left"
+		is-disabled = false
+	elem 
+		name = "CTRL+F"
+		command = "a-intent left"
+		is-disabled = false
+	elem 
+		name = "G"
+		command = "a-intent right"
+		is-disabled = false
+	elem 
+		name = "CTRL+G"
+		command = "a-intent right"
+		is-disabled = false
+	elem 
+		name = "J"
+		command = "toggle-gun-mode"
+		is-disabled = false
+	elem 
+		name = "CTRL+J"
+		command = "toggle-gun-mode"
+		is-disabled = false
+	elem 
+		name = "Q"
+		command = "unequip-module"
+		is-disabled = false
+	elem 
+		name = "CTRL+Q"
+		command = "unequip-module"
+		is-disabled = false
+	elem 
+		name = "R"
+		command = ".southwest"
+		is-disabled = false
+	elem 
+		name = "CTRL+R"
+		command = ".southwest"
+		is-disabled = false
+	elem "s_key"
+		name = "S+REP"
+		command = ".south"
+		is-disabled = false
+	elem 
+		name = "CTRL+S+REP"
+		command = ".south"
+		is-disabled = false
+	elem 
+		name = "T"
+		command = ".say"
+		is-disabled = false
+	elem "w_key"
+		name = "W+REP"
 		command = ".north"
 		is-disabled = false
 	elem 
-		name = "MULTIPLY"
-		command = "swap-hand"
+		name = "CTRL+W+REP"
+		command = ".north"
 		is-disabled = false
 	elem 
-		name = "ADD"
-		command = "attack-self"
+		name = "X"
+		command = ".northeast"
 		is-disabled = false
 	elem 
-		name = "SUBTRACT"
-		command = "drop-item"
+		name = "CTRL+X"
+		command = ".northeast"
 		is-disabled = false
 	elem 
-		name = "DIVIDE"
-		command = "toggle-throw-mode"
+		name = "Y"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "CTRL+Y"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "Z"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "CTRL+Z"
+		command = "Activate-Held-Object"
 		is-disabled = false
 	elem 
 		name = "F1"
@@ -124,16 +228,20 @@ macro "macro"
 		command = "ooc"
 		is-disabled = false
 	elem 
+		name = "F2+REP"
+		command = ".screenshot auto"
+		is-disabled = false
+	elem 
 		name = "SHIFT+F2+REP"
 		command = ".screenshot"
 		is-disabled = false
 	elem 
 		name = "F3"
-		command = "say"
+		command = ".say"
 		is-disabled = false
 	elem 
 		name = "F4"
-		command = "me"
+		command = ".me"
 		is-disabled = false
 	elem 
 		name = "F5"
@@ -141,43 +249,689 @@ macro "macro"
 		is-disabled = false
 	elem 
 		name = "F6"
-		command = "ToggleGunMode"
+		command = "Player-Panel-New"
+		is-disabled = false
+	elem 
+		name = "F7"
+		command = "Admin-PM"
+		is-disabled = false
+	elem 
+		name = "F8"
+		command = "Invisimin"
+		is-disabled = false
+	elem 
+		name = "F12"
+		command = "F12"
 		is-disabled = false
 
-macro "tcside"
-
-macro "vending"
+macro "macro"
+	elem 
+		name = "TAB"
+		command = ".winset \"mainwindow.macro=hotkeymode hotkey_toggle.is-checked=true mapwindow.map.focus=true\""
+		is-disabled = false
+	elem 
+		name = "CENTER+REP"
+		command = ".center"
+		is-disabled = false
 	elem 
 		name = "NORTHEAST"
-		command = "skincmd \"vending;pagen\""
+		command = ".northeast"
 		is-disabled = false
 	elem 
 		name = "SOUTHEAST"
-		command = "skincmd \"vending;pagep\""
+		command = ".southeast"
+		is-disabled = false
+	elem 
+		name = "SOUTHWEST"
+		command = ".southwest"
+		is-disabled = false
+	elem 
+		name = "NORTHWEST"
+		command = ".northwest"
+		is-disabled = false
+	elem 
+		name = "ALT+WEST"
+		command = "westfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+WEST"
+		command = "westface"
+		is-disabled = false
+	elem 
+		name = "WEST+REP"
+		command = ".west"
+		is-disabled = false
+	elem 
+		name = "ALT+NORTH"
+		command = "northfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+NORTH"
+		command = "northface"
+		is-disabled = false
+	elem 
+		name = "NORTH+REP"
+		command = ".north"
+		is-disabled = false
+	elem 
+		name = "ALT+EAST"
+		command = "eastfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+EAST"
+		command = "eastface"
+		is-disabled = false
+	elem 
+		name = "EAST+REP"
+		command = ".east"
+		is-disabled = false
+	elem 
+		name = "ALT+SOUTH"
+		command = "southfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+SOUTH"
+		command = "southface"
+		is-disabled = false
+	elem 
+		name = "SOUTH+REP"
+		command = ".south"
+		is-disabled = false
+	elem 
+		name = "INSERT"
+		command = "a-intent right"
+		is-disabled = false
+	elem 
+		name = "DELETE"
+		command = "delete-key-pressed"
+		is-disabled = false
+	elem 
+		name = "CTRL+1"
+		command = "a-intent help"
+		is-disabled = false
+	elem 
+		name = "CTRL+2"
+		command = "a-intent disarm"
+		is-disabled = false
+	elem 
+		name = "CTRL+3"
+		command = "a-intent grab"
+		is-disabled = false
+	elem 
+		name = "CTRL+4"
+		command = "a-intent harm"
+		is-disabled = false
+	elem 
+		name = "CTRL+A+REP"
+		command = ".west"
+		is-disabled = false
+	elem 
+		name = "CTRL+D+REP"
+		command = ".east"
+		is-disabled = false
+	elem 
+		name = "CTRL+E"
+		command = "quick-equip"
+		is-disabled = false
+	elem 
+		name = "CTRL+F"
+		command = "a-intent left"
+		is-disabled = false
+	elem 
+		name = "CTRL+G"
+		command = "a-intent right"
+		is-disabled = false
+	elem 
+		name = "CTRL+SHIFT+G"
+		command = ".configure graphics-hwmode on"
+		is-disabled = false
+	elem 
+		name = "CTRL+Q"
+		command = ".northwest"
+		is-disabled = false
+	elem 
+		name = "CTRL+R"
+		command = ".southwest"
+		is-disabled = false
+	elem 
+		name = "CTRL+S+REP"
+		command = ".south"
+		is-disabled = false
+	elem 
+		name = "CTRL+W+REP"
+		command = ".north"
+		is-disabled = false
+	elem 
+		name = "CTRL+X"
+		command = ".northeast"
+		is-disabled = false
+	elem 
+		name = "CTRL+Y"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "CTRL+Z"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "F1"
+		command = "adminhelp"
+		is-disabled = false
+	elem 
+		name = "CTRL+SHIFT+F1+REP"
+		command = ".options"
+		is-disabled = false
+	elem 
+		name = "F2"
+		command = "ooc"
+		is-disabled = false
+	elem 
+		name = "F2+REP"
+		command = ".screenshot auto"
+		is-disabled = false
+	elem 
+		name = "SHIFT+F2+REP"
+		command = ".screenshot"
+		is-disabled = false
+	elem 
+		name = "F3"
+		command = ".say"
+		is-disabled = false
+	elem 
+		name = "F4"
+		command = ".me"
+		is-disabled = false
+	elem 
+		name = "F5"
+		command = "asay"
+		is-disabled = false
+	elem 
+		name = "F6"
+		command = "Player-Panel-New"
+		is-disabled = false
+	elem 
+		name = "F7"
+		command = "Admin-PM"
+		is-disabled = false
+	elem 
+		name = "F8"
+		command = "Invisimin"
+		is-disabled = false
+	elem 
+		name = "F12"
+		command = "F12"
+		is-disabled = false
+
+macro "hotkeymode"
+	elem 
+		name = "TAB"
+		command = ".winset \"mainwindow.macro=macro hotkey_toggle.is-checked=false input.focus=true\""
+		is-disabled = false
+	elem 
+		name = "CENTER+REP"
+		command = ".center"
+		is-disabled = false
+	elem 
+		name = "NORTHEAST"
+		command = ".northeast"
+		is-disabled = false
+	elem 
+		name = "SOUTHEAST"
+		command = ".southeast"
+		is-disabled = false
+	elem 
+		name = "SOUTHWEST"
+		command = ".southwest"
+		is-disabled = false
+	elem 
+		name = "NORTHWEST"
+		command = ".northwest"
+		is-disabled = false
+	elem 
+		name = "ALT+WEST"
+		command = "westfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+WEST"
+		command = "westface"
+		is-disabled = false
+	elem 
+		name = "WEST+REP"
+		command = ".west"
+		is-disabled = false
+	elem 
+		name = "ALT+NORTH"
+		command = "northfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+NORTH"
+		command = "northface"
+		is-disabled = false
+	elem 
+		name = "NORTH+REP"
+		command = ".north"
+		is-disabled = false
+	elem 
+		name = "ALT+EAST"
+		command = "eastfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+EAST"
+		command = "eastface"
+		is-disabled = false
+	elem 
+		name = "EAST+REP"
+		command = ".east"
+		is-disabled = false
+	elem 
+		name = "ALT+SOUTH"
+		command = "southfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+SOUTH"
+		command = "southface"
+		is-disabled = false
+	elem 
+		name = "SOUTH+REP"
+		command = ".south"
+		is-disabled = false
+	elem 
+		name = "INSERT"
+		command = "a-intent right"
+		is-disabled = false
+	elem 
+		name = "DELETE"
+		command = "delete-key-pressed"
 		is-disabled = false
 	elem 
 		name = "1"
-		command = "skincmd \"vending;buy0\""
+		command = "a-intent help"
+		is-disabled = false
+	elem 
+		name = "CTRL+1"
+		command = "a-intent help"
 		is-disabled = false
 	elem 
 		name = "2"
-		command = "skincmd \"vending;buy1\""
+		command = "a-intent disarm"
+		is-disabled = false
+	elem 
+		name = "CTRL+2"
+		command = "a-intent disarm"
 		is-disabled = false
 	elem 
 		name = "3"
-		command = "skincmd \"vending;buy2\""
+		command = "a-intent grab"
+		is-disabled = false
+	elem 
+		name = "CTRL+3"
+		command = "a-intent grab"
 		is-disabled = false
 	elem 
 		name = "4"
-		command = "skincmd \"vending;buy3\""
+		command = "a-intent harm"
+		is-disabled = false
+	elem 
+		name = "CTRL+4"
+		command = "a-intent harm"
 		is-disabled = false
 	elem 
 		name = "5"
-		command = "skincmd \"vending;buy4\""
+		command = ".me"
 		is-disabled = false
 	elem 
-		name = "6"
-		command = "skincmd \"vending;buy5\""
+		name = "A+REP"
+		command = ".west"
+		is-disabled = false
+	elem 
+		name = "CTRL+A+REP"
+		command = ".west"
+		is-disabled = false
+	elem 
+		name = "D+REP"
+		command = ".east"
+		is-disabled = false
+	elem 
+		name = "CTRL+D+REP"
+		command = ".east"
+		is-disabled = false
+	elem 
+		name = "E"
+		command = "quick-equip"
+		is-disabled = false
+	elem 
+		name = "CTRL+E"
+		command = "quick-equip"
+		is-disabled = false
+	elem 
+		name = "F"
+		command = "a-intent left"
+		is-disabled = false
+	elem 
+		name = "CTRL+F"
+		command = "a-intent left"
+		is-disabled = false
+	elem 
+		name = "G"
+		command = "a-intent right"
+		is-disabled = false
+	elem 
+		name = "CTRL+G"
+		command = "a-intent right"
+		is-disabled = false
+	elem 
+		name = "H"
+		command = "holster"
+		is-disabled = false
+	elem 
+		name = "CTRL+H"
+		command = "holster"
+		is-disabled = false
+	elem 
+		name = "J"
+		command = "toggle-gun-mode"
+		is-disabled = false
+	elem 
+		name = "CTRL+J"
+		command = "toggle-gun-mode"
+		is-disabled = false
+	elem 
+		name = "Q"
+		command = ".northwest"
+		is-disabled = false
+	elem 
+		name = "CTRL+Q"
+		command = ".northwest"
+		is-disabled = false
+	elem 
+		name = "R"
+		command = ".southwest"
+		is-disabled = false
+	elem 
+		name = "CTRL+R"
+		command = ".southwest"
+		is-disabled = false
+	elem "s_key"
+		name = "S+REP"
+		command = ".south"
+		is-disabled = false
+	elem 
+		name = "CTRL+S+REP"
+		command = ".south"
+		is-disabled = false
+	elem 
+		name = "T"
+		command = ".say"
+		is-disabled = false
+	elem "w_key"
+		name = "W+REP"
+		command = ".north"
+		is-disabled = false
+	elem 
+		name = "CTRL+W+REP"
+		command = ".north"
+		is-disabled = false
+	elem 
+		name = "X"
+		command = ".northeast"
+		is-disabled = false
+	elem 
+		name = "CTRL+X"
+		command = ".northeast"
+		is-disabled = false
+	elem 
+		name = "Y"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "CTRL+Y"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "Z"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "CTRL+Z"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "F1"
+		command = "adminhelp"
+		is-disabled = false
+	elem 
+		name = "CTRL+SHIFT+F1+REP"
+		command = ".options"
+		is-disabled = false
+	elem 
+		name = "F2"
+		command = "ooc"
+		is-disabled = false
+	elem 
+		name = "F2+REP"
+		command = ".screenshot auto"
+		is-disabled = false
+	elem 
+		name = "SHIFT+F2+REP"
+		command = ".screenshot"
+		is-disabled = false
+	elem 
+		name = "F3"
+		command = ".say"
+		is-disabled = false
+	elem 
+		name = "F4"
+		command = ".me"
+		is-disabled = false
+	elem 
+		name = "F5"
+		command = "asay"
+		is-disabled = false
+	elem 
+		name = "F6"
+		command = "Player-Panel-New"
+		is-disabled = false
+	elem 
+		name = "F7"
+		command = "Admin-PM"
+		is-disabled = false
+	elem 
+		name = "F8"
+		command = "Invisimin"
+		is-disabled = false
+	elem 
+		name = "F12"
+		command = "F12"
+		is-disabled = false
+
+macro "borgmacro"
+	elem 
+		name = "TAB"
+		command = ".winset \"mainwindow.macro=borghotkeymode hotkey_toggle.is-checked=true mapwindow.map.focus=true input.background-color=#F0F0F0\""
+		is-disabled = false
+	elem 
+		name = "CENTER+REP"
+		command = ".center"
+		is-disabled = false
+	elem 
+		name = "NORTHEAST"
+		command = ".northeast"
+		is-disabled = false
+	elem 
+		name = "SOUTHEAST"
+		command = ".southeast"
+		is-disabled = false
+	elem 
+		name = "SOUTHWEST"
+		command = ".southwest"
+		is-disabled = false
+	elem 
+		name = "NORTHWEST"
+		command = ".northwest"
+		is-disabled = false
+	elem 
+		name = "ALT+WEST"
+		command = "westfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+WEST"
+		command = "westface"
+		is-disabled = false
+	elem 
+		name = "WEST+REP"
+		command = ".west"
+		is-disabled = false
+	elem 
+		name = "ALT+NORTH"
+		command = "northfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+NORTH"
+		command = "northface"
+		is-disabled = false
+	elem 
+		name = "NORTH+REP"
+		command = ".north"
+		is-disabled = false
+	elem 
+		name = "ALT+EAST"
+		command = "eastfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+EAST"
+		command = "eastface"
+		is-disabled = false
+	elem 
+		name = "EAST+REP"
+		command = ".east"
+		is-disabled = false
+	elem 
+		name = "ALT+SOUTH"
+		command = "southfaceperm"
+		is-disabled = false
+	elem 
+		name = "CTRL+SOUTH"
+		command = "southface"
+		is-disabled = false
+	elem 
+		name = "SOUTH+REP"
+		command = ".south"
+		is-disabled = false
+	elem 
+		name = "INSERT"
+		command = "a-intent right"
+		is-disabled = false
+	elem 
+		name = "DELETE"
+		command = "delete-key-pressed"
+		is-disabled = false
+	elem 
+		name = "CTRL+1"
+		command = "toggle-module 1"
+		is-disabled = false
+	elem 
+		name = "CTRL+2"
+		command = "toggle-module 2"
+		is-disabled = false
+	elem 
+		name = "CTRL+3"
+		command = "toggle-module 3"
+		is-disabled = false
+	elem 
+		name = "CTRL+4"
+		command = "a-intent left"
+		is-disabled = false
+	elem 
+		name = "CTRL+A+REP"
+		command = ".west"
+		is-disabled = false
+	elem 
+		name = "CTRL+D+REP"
+		command = ".east"
+		is-disabled = false
+	elem 
+		name = "CTRL+F"
+		command = "a-intent left"
+		is-disabled = false
+	elem 
+		name = "CTRL+G"
+		command = "a-intent right"
+		is-disabled = false
+	elem 
+		name = "CTRL+Q"
+		command = ".northwest"
+		is-disabled = false
+	elem 
+		name = "CTRL+R"
+		command = ".southwest"
+		is-disabled = false
+	elem 
+		name = "CTRL+S+REP"
+		command = ".south"
+		is-disabled = false
+	elem 
+		name = "CTRL+W+REP"
+		command = ".north"
+		is-disabled = false
+	elem 
+		name = "CTRL+X"
+		command = ".northeast"
+		is-disabled = false
+	elem 
+		name = "CTRL+Y"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "CTRL+Z"
+		command = "Activate-Held-Object"
+		is-disabled = false
+	elem 
+		name = "F1"
+		command = "adminhelp"
+		is-disabled = false
+	elem 
+		name = "CTRL+SHIFT+F1+REP"
+		command = ".options"
+		is-disabled = false
+	elem 
+		name = "F2"
+		command = "ooc"
+		is-disabled = false
+	elem 
+		name = "F2+REP"
+		command = ".screenshot auto"
+		is-disabled = false
+	elem 
+		name = "SHIFT+F2+REP"
+		command = ".screenshot"
+		is-disabled = false
+	elem 
+		name = "F3"
+		command = ".say"
+		is-disabled = false
+	elem 
+		name = "F4"
+		command = ".me"
+		is-disabled = false
+	elem 
+		name = "F5"
+		command = "asay"
+		is-disabled = false
+	elem 
+		name = "F6"
+		command = "Player-Panel-New"
+		is-disabled = false
+	elem 
+		name = "F7"
+		command = "Admin-PM"
+		is-disabled = false
+	elem 
+		name = "F8"
+		command = "Invisimin"
+		is-disabled = false
+	elem 
+		name = "F12"
+		command = "F12"
 		is-disabled = false
 
 
@@ -246,8 +1000,17 @@ menu "menu"
 		is-disabled = false
 		saved-params = "is-checked"
 	elem "icon64"
-		name = "&64x64 (2x)"
+		name = "&64x64"
 		command = ".winset \"mapwindow.map.icon-size=64\""
+		category = "&Icons"
+		is-checked = false
+		can-check = true
+		group = "size"
+		is-disabled = false
+		saved-params = "is-checked"
+	elem "icon48"
+		name = "&48x48"
+		command = ".winset \"mapwindow.map.icon-size=48\""
 		category = "&Icons"
 		is-checked = false
 		can-check = true
@@ -300,26 +1063,8 @@ menu "menu"
 		is-disabled = false
 		saved-params = "is-checked"
 	elem 
-		name = ""
-		command = ""
-		category = "&Help"
-		is-checked = false
-		can-check = false
-		group = ""
-		is-disabled = false
-		saved-params = "is-checked"
-	elem 
-		name = "&Rules"
-		command = "Rules"
-		category = "&Help"
-		is-checked = false
-		can-check = false
-		group = ""
-		is-disabled = false
-		saved-params = "is-checked"
-	elem 
-		name = "&News"
-		command = "Read-News"
+		name = "&Hotkeys"
+		command = "hotkeys-help"
 		category = "&Help"
 		is-checked = false
 		can-check = false
@@ -332,7 +1077,7 @@ window "Telecomms IDE"
 	elem "Telecomms IDE"
 		type = MAIN
 		pos = 281,0
-		size = 652x582
+		size = 569x582
 		anchor1 = none
 		anchor2 = none
 		font-family = ""
@@ -368,12 +1113,40 @@ window "Telecomms IDE"
 		macro = ""
 		menu = ""
 		on-close = "exittcs"
+	elem "button5"
+		type = BUTTON
+		pos = 209,464
+		size = 70x20
+		anchor1 = 37,80
+		anchor2 = 49,83
+		font-family = ""
+		font-size = 0
+		font-style = ""
+		text-color = #000000
+		background-color = none
+		is-visible = true
+		is-disabled = false
+		is-transparent = false
+		is-default = false
+		border = none
+		drop-zone = false
+		right-click = false
+		saved-params = "is-checked"
+		on-size = ""
+		text = "Clear Memory"
+		image = ""
+		command = "tcsclearmem"
+		is-flat = false
+		stretch = false
+		is-checked = false
+		group = ""
+		button-type = pushbutton
 	elem "button4"
 		type = BUTTON
-		pos = 180,464
-		size = 60x20
-		anchor1 = none
-		anchor2 = none
+		pos = 157,464
+		size = 52x20
+		anchor1 = 28,80
+		anchor2 = 37,83
 		font-family = ""
 		font-size = 0
 		font-style = ""
@@ -398,10 +1171,10 @@ window "Telecomms IDE"
 		button-type = pushbutton
 	elem "button3"
 		type = BUTTON
-		pos = 120,464
-		size = 60x20
-		anchor1 = none
-		anchor2 = none
+		pos = 105,464
+		size = 52x20
+		anchor1 = 18,80
+		anchor2 = 28,83
 		font-family = ""
 		font-size = 0
 		font-style = ""
@@ -427,9 +1200,9 @@ window "Telecomms IDE"
 	elem "tcserror"
 		type = OUTPUT
 		pos = 0,488
-		size = 648x94
-		anchor1 = none
-		anchor2 = none
+		size = 566x94
+		anchor1 = 0,84
+		anchor2 = 99,100
 		font-family = "sans-serif"
 		font-size = 9
 		font-style = ""
@@ -452,10 +1225,10 @@ window "Telecomms IDE"
 		image = ""
 	elem "button2"
 		type = BUTTON
-		pos = 60,464
-		size = 60x20
-		anchor1 = none
-		anchor2 = none
+		pos = 53,464
+		size = 52x20
+		anchor1 = 9,80
+		anchor2 = 18,83
 		font-family = ""
 		font-size = 0
 		font-style = ""
@@ -481,9 +1254,9 @@ window "Telecomms IDE"
 	elem "button1"
 		type = BUTTON
 		pos = 0,464
-		size = 60x20
-		anchor1 = none
-		anchor2 = none
+		size = 53x20
+		anchor1 = 0,80
+		anchor2 = 9,83
 		font-family = ""
 		font-size = 0
 		font-style = ""
@@ -509,9 +1282,9 @@ window "Telecomms IDE"
 	elem "tcscode"
 		type = INPUT
 		pos = 0,0
-		size = 652x464
-		anchor1 = none
-		anchor2 = none
+		size = 569x464
+		anchor1 = 0,0
+		anchor2 = 100,80
 		font-family = "Courier"
 		font-size = 10
 		font-style = ""
@@ -571,116 +1344,6 @@ window "chemdispenser"
 		macro = ""
 		menu = ""
 		on-close = ""
-	elem "charging"
-		type = BUTTON
-		pos = 72,24
-		size = 88x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = true
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "[Not charging]"
-		image = ""
-		command = "skincmd \"chemdispenser;tcharge\""
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "button4"
-		type = BUTTON
-		pos = 208,4
-		size = 48x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = true
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "[Other]"
-		image = ""
-		command = "skincmd \"chemdispenser;amountc\""
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "child2"
-		type = CHILD
-		pos = 0,48
-		size = 340x432
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = true
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "splitter"
-		on-size = ""
-		left = "chemdispenser_reagents"
-		right = ""
-		is-vert = false
-		splitter = 50
-		show-splitter = true
-		lock = none
-	elem "button3"
-		type = BUTTON
-		pos = 208,4
-		size = 48x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = true
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "[Other]"
-		image = ""
-		command = "skincmd \"chemdispenser;amountc\""
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
 	elem "energy"
 		type = LABEL
 		pos = 8,24
@@ -707,6 +1370,8 @@ window "chemdispenser"
 		keep-aspect = false
 		align = center
 		text-wrap = false
+		allow-html = false
+		letterbox = true
 	elem "eject"
 		type = BUTTON
 		pos = 264,4
@@ -873,10 +1538,12 @@ window "chemdispenser"
 		keep-aspect = false
 		align = center
 		text-wrap = false
+		allow-html = false
+		letterbox = true
 	elem "child1"
 		type = CHILD
-		pos = 0,56
-		size = 340x424
+		pos = 0,40
+		size = 340x440
 		anchor1 = none
 		anchor2 = none
 		font-family = ""
@@ -994,6 +1661,8 @@ window "chemdispenser_reagents"
 		keep-aspect = false
 		align = center
 		text-wrap = false
+		allow-html = false
+		letterbox = true
 
 window "mainwindow"
 	elem "mainwindow"
@@ -1035,6 +1704,34 @@ window "mainwindow"
 		macro = "macro"
 		menu = "menu"
 		on-close = ""
+	elem "hotkey_toggle"
+		type = BUTTON
+		pos = 560,420
+		size = 80x20
+		anchor1 = 100,100
+		anchor2 = none
+		font-family = ""
+		font-size = 0
+		font-style = ""
+		text-color = #000000
+		background-color = none
+		is-visible = true
+		is-disabled = false
+		is-transparent = false
+		is-default = false
+		border = none
+		drop-zone = false
+		right-click = false
+		saved-params = ""
+		on-size = ""
+		text = "Hotkey Toggle"
+		image = ""
+		command = ".winset \"mainwindow.macro!=macro ? mainwindow.macro=macro hotkey_toggle.is-checked=false input.focus=true : mainwindow.macro=hotkeymode hotkey_toggle.is-checked=true mapwindow.map.focus=true\""
+		is-flat = false
+		stretch = false
+		is-checked = false
+		group = ""
+		button-type = pushbox
 	elem "mainvsplit"
 		type = CHILD
 		pos = 3,0
@@ -1064,7 +1761,7 @@ window "mainwindow"
 	elem "input"
 		type = INPUT
 		pos = 3,420
-		size = 554x20
+		size = 517x20
 		anchor1 = 0,100
 		anchor2 = 100,100
 		font-family = ""
@@ -1087,7 +1784,7 @@ window "mainwindow"
 		no-command = false
 	elem "saybutton"
 		type = BUTTON
-		pos = 557,420
+		pos = 520,420
 		size = 40x20
 		anchor1 = 100,100
 		anchor2 = none
@@ -1107,35 +1804,7 @@ window "mainwindow"
 		on-size = ""
 		text = "Chat"
 		image = ""
-		command = ".winset \"saybutton.is-checked=true?input.command=\"!say \\\"\" oocbutton.is-checked=false:input.command=\""
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbox
-	elem "oocbutton"
-		type = BUTTON
-		pos = 597,420
-		size = 40x20
-		anchor1 = 100,100
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = true
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "OOC"
-		image = ""
-		command = ".winset \"oocbutton.is-checked=true?input.command=\"!ooc \\\"\" saybutton.is-checked=false:input.command=\""
+		command = ".winset \"saybutton.is-checked=true?input.command=\"!say \\\"\" macrobutton.is-checked=false:input.command=\""
 		is-flat = false
 		stretch = false
 		is-checked = false
@@ -1188,10 +1857,10 @@ window "mapwindow"
 		size = 640x480
 		anchor1 = 0,0
 		anchor2 = 100,100
-		font-family = ""
-		font-size = 0
+		font-family = "Arial Rounded MT Bold,Arial Black,Arial,sans-serif"
+		font-size = 7
 		font-style = ""
-		text-color = #000000
+		text-color = none
 		background-color = none
 		is-visible = true
 		is-disabled = false
@@ -1204,8 +1873,11 @@ window "mapwindow"
 		on-size = ""
 		icon-size = 0
 		text-mode = false
+		letterbox = true
+		zoom = 0
 		on-show = ".winset\"mainwindow.mainvsplit.left=mapwindow\""
 		on-hide = ".winset\"mainwindow.mainvsplit.left=\""
+		style = ""
 
 window "outputwindow"
 	elem "outputwindow"
@@ -1271,7 +1943,7 @@ window "outputwindow"
 		visited-color = #ff00ff
 		style = ".system {color:#ff0000;}"
 		enable-http-images = false
-		max-lines = 1000
+		max-lines = 0
 		image = ""
 
 window "rpane"
@@ -1340,10 +2012,122 @@ window "rpane"
 		splitter = 50
 		show-splitter = true
 		lock = none
+	elem "rulesb"
+		type = BUTTON
+		pos = 278,0
+		size = 60x16
+		anchor1 = none
+		anchor2 = none
+		font-family = ""
+		font-size = 0
+		font-style = ""
+		text-color = #000000
+		background-color = none
+		is-visible = true
+		is-disabled = false
+		is-transparent = false
+		is-default = false
+		border = none
+		drop-zone = false
+		right-click = false
+		saved-params = "is-checked"
+		on-size = ""
+		text = "Rules"
+		image = ""
+		command = "rules"
+		is-flat = false
+		stretch = false
+		is-checked = false
+		group = "rpanemode"
+		button-type = pushbutton
+	elem "changelog"
+		type = BUTTON
+		pos = 341,0
+		size = 67x16
+		anchor1 = none
+		anchor2 = none
+		font-family = ""
+		font-size = 0
+		font-style = ""
+		text-color = #000000
+		background-color = none
+		is-visible = true
+		is-disabled = false
+		is-transparent = false
+		is-default = false
+		border = none
+		drop-zone = false
+		right-click = false
+		saved-params = "is-checked"
+		on-size = ""
+		text = "Changelog"
+		image = ""
+		command = "Changelog"
+		is-flat = false
+		stretch = false
+		is-checked = false
+		group = "rpanemode"
+		button-type = pushbutton
+	elem "forumb"
+		type = BUTTON
+		pos = 215,0
+		size = 60x16
+		anchor1 = none
+		anchor2 = none
+		font-family = ""
+		font-size = 0
+		font-style = ""
+		text-color = #000000
+		background-color = none
+		is-visible = true
+		is-disabled = false
+		is-transparent = false
+		is-default = false
+		border = none
+		drop-zone = false
+		right-click = false
+		saved-params = "is-checked"
+		on-size = ""
+		text = "Forum"
+		image = ""
+		command = "forum"
+		is-flat = false
+		stretch = false
+		is-checked = false
+		group = "rpanemode"
+		button-type = pushbutton
+	elem "wikib"
+		type = BUTTON
+		pos = 152,0
+		size = 60x16
+		anchor1 = none
+		anchor2 = none
+		font-family = ""
+		font-size = 0
+		font-style = ""
+		text-color = #000000
+		background-color = none
+		is-visible = true
+		is-disabled = false
+		is-transparent = false
+		is-default = false
+		border = none
+		drop-zone = false
+		right-click = false
+		saved-params = "is-checked"
+		on-size = ""
+		text = "Wiki"
+		image = ""
+		command = "wiki"
+		is-flat = false
+		stretch = false
+		is-checked = false
+		group = "rpanemode"
+		button-type = pushbutton
 	elem "textb"
 		type = BUTTON
 		pos = 0,0
-		size = 60x20
+		size = 60x16
 		anchor1 = none
 		anchor2 = none
 		font-family = ""
@@ -1370,8 +2154,8 @@ window "rpane"
 		button-type = pushbox
 	elem "browseb"
 		type = BUTTON
-		pos = 65,0
-		size = 60x20
+		pos = 464,0
+		size = 60x16
 		anchor1 = none
 		anchor2 = none
 		font-family = ""
@@ -1398,8 +2182,8 @@ window "rpane"
 		button-type = pushbox
 	elem "infob"
 		type = BUTTON
-		pos = 130,0
-		size = 60x20
+		pos = 64,0
+		size = 60x16
 		anchor1 = none
 		anchor2 = none
 		font-family = ""
@@ -1535,7 +2319,7 @@ window "infowindow"
 	elem "info"
 		type = INFO
 		pos = 0,0
-		size = 638x475
+		size = 638x477
 		anchor1 = 0,0
 		anchor2 = 100,100
 		font-family = ""
@@ -1558,17 +2342,19 @@ window "infowindow"
 		tab-font-family = ""
 		tab-font-size = 0
 		tab-font-style = ""
-		allow-html = false
+		allow-html = true
 		multi-line = true
 		on-show = ".winset\"rpane.infob.is-visible=true;rpane.browseb.is-visible=true?rpane.infob.pos=130,0:rpane.infob.pos=65,0 rpane.textb.is-visible=true rpane.infob.is-checked=true rpane.rpanewindow.pos=0,30 rpane.rpanewindow.size=0x0 rpane.rpanewindow.left=infowindow\""
 		on-hide = ".winset\"rpane.infob.is-visible=false;rpane.browseb.is-visible=true?rpane.browseb.is-checked=true rpane.rpanewindow.left=browserwindow:rpane.textb.is-visible=true rpane.rpanewindow.pos=0,30 rpane.rpanewindow.size=0x0 rpane.rpanewindow.left=\""
 		on-tab = ""
+		prefix-color = none
+		suffix-color = none
 
-window "vendingslot"
-	elem "vendingslot"
+window "text_editor"
+	elem "text_editor"
 		type = MAIN
 		pos = 281,0
-		size = 285x60
+		size = 360x488
 		anchor1 = none
 		anchor2 = none
 		font-family = ""
@@ -1580,18 +2366,18 @@ window "vendingslot"
 		is-disabled = false
 		is-transparent = false
 		is-default = false
-		border = none
+		border = sunken
 		drop-zone = false
 		right-click = false
 		saved-params = "pos;size;is-minimized;is-maximized"
 		on-size = ""
-		title = ""
-		titlebar = false
-		statusbar = false
-		can-close = false
+		title = "Text Editor"
+		titlebar = true
+		statusbar = true
+		can-close = true
 		can-minimize = false
 		can-resize = false
-		is-pane = true
+		is-pane = false
 		is-minimized = false
 		is-maximized = false
 		can-scroll = none
@@ -1604,17 +2390,17 @@ window "vendingslot"
 		macro = ""
 		menu = ""
 		on-close = ""
-	elem "buy"
+	elem "exit"
 		type = BUTTON
-		pos = 240,16
-		size = 32x32
-		anchor1 = 80,7
-		anchor2 = 98,93
-		font-family = "Arial"
-		font-size = 15
+		pos = 248,456
+		size = 104x24
+		anchor1 = none
+		anchor2 = none
+		font-family = ""
+		font-size = 0
 		font-style = ""
-		text-color = #ffff80
-		background-color = #9193ae
+		text-color = #000000
+		background-color = none
 		is-visible = true
 		is-disabled = false
 		is-transparent = false
@@ -1624,7 +2410,7 @@ window "vendingslot"
 		right-click = false
 		saved-params = "is-checked"
 		on-size = ""
-		text = "$"
+		text = "Exit without saving"
 		image = ""
 		command = ""
 		is-flat = false
@@ -1632,12 +2418,12 @@ window "vendingslot"
 		is-checked = false
 		group = ""
 		button-type = pushbutton
-	elem "stock"
-		type = LABEL
-		pos = 8,40
-		size = 216x16
-		anchor1 = 3,67
-		anchor2 = 79,93
+	elem "save"
+		type = BUTTON
+		pos = 128,456
+		size = 104x24
+		anchor1 = none
+		anchor2 = none
 		font-family = ""
 		font-size = 0
 		font-style = ""
@@ -1645,51 +2431,53 @@ window "vendingslot"
 		background-color = none
 		is-visible = true
 		is-disabled = false
-		is-transparent = true
+		is-transparent = false
 		is-default = false
 		border = none
 		drop-zone = false
 		right-click = false
-		saved-params = ""
+		saved-params = "is-checked"
 		on-size = ""
-		text = "Left in stock: 0"
+		text = "Save"
 		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "name"
-		type = LABEL
-		pos = 0,4
-		size = 224x28
-		anchor1 = 0,7
-		anchor2 = 79,53
+		command = ""
+		is-flat = false
+		stretch = false
+		is-checked = false
+		group = ""
+		button-type = pushbutton
+	elem "saveexit"
+		type = BUTTON
+		pos = 8,456
+		size = 104x24
+		anchor1 = none
+		anchor2 = none
 		font-family = ""
-		font-size = 11
-		font-style = "bold"
+		font-size = 0
+		font-style = ""
 		text-color = #000000
 		background-color = none
 		is-visible = true
 		is-disabled = false
-		is-transparent = true
+		is-transparent = false
 		is-default = false
 		border = none
 		drop-zone = false
 		right-click = false
-		saved-params = ""
+		saved-params = "is-checked"
 		on-size = ""
-		text = "Cuban Pete's Double Bearded Wine LOL LINES"
+		text = "Save + Exit"
 		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = true
-
-window "vendingwindow_n"
-	elem "vendingwindow_n"
-		type = MAIN
-		pos = 281,0
-		size = 300x438
+		command = ""
+		is-flat = false
+		stretch = false
+		is-checked = false
+		group = ""
+		button-type = pushbutton
+	elem "textedit"
+		type = INPUT
+		pos = 0,0
+		size = 360x448
 		anchor1 = none
 		anchor2 = none
 		font-family = ""
@@ -1697,1056 +2485,17 @@ window "vendingwindow_n"
 		font-style = ""
 		text-color = #000000
 		background-color = #ffffff
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "pos;size;is-minimized;is-maximized"
-		on-size = ""
-		title = "Vending Machine"
-		titlebar = true
-		statusbar = false
-		can-close = true
-		can-minimize = false
-		can-resize = false
-		is-pane = false
-		is-minimized = false
-		is-maximized = false
-		can-scroll = none
-		icon = ""
-		image = 'icons\\VendingMachineBG.png'
-		image-mode = stretch
-		keep-aspect = false
-		transparent-color = none
-		alpha = 255
-		macro = "vending"
-		menu = ""
-		on-close = ""
-	elem "label2"
-		type = LABEL
-		pos = 0,0
-		size = 80x16
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #0000a0
-		background-color = #ff8000
 		is-visible = true
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = sunken
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = ""
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "page"
-		type = LABEL
-		pos = 64,416
-		size = 36x16
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #c7dbe0
-		is-visible = true
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "1/1"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "forwardbutton"
-		type = BUTTON
-		pos = 96,416
-		size = 16x16
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #c7dbe0
-		is-visible = true
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = ">"
-		image = ""
-		command = "skincmd \"vending;pagen\""
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "backbutton"
-		type = BUTTON
-		pos = 48,416
-		size = 16x16
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #ccdfe3
-		is-visible = true
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "<"
-		image = ""
-		command = "skincmd \"vending;pagep\""
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "label1"
-		type = LABEL
-		pos = 8,416
-		size = 40x16
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = true
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "Page: "
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "product15"
-		type = BUTTON
-		pos = 8,392
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #526f7c
-		is-visible = false
-		is-disabled = true
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "2Beard Whine (out of stock)"
-		image = ""
-		command = "buy15"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "stock15"
-		type = LABEL
-		pos = 264,392
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "stock14"
-		type = LABEL
-		pos = 264,368
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "stock13"
-		type = LABEL
-		pos = 264,344
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "product14"
-		type = BUTTON
-		pos = 8,368
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #ad92dc
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "Vanilla SuperAggroCrag Tears (Keyboard Selected)"
-		image = ""
-		command = "buy14"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product13"
-		type = BUTTON
-		pos = 8,344
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #8ba5b4
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "MOTHERFUCKER"
-		image = ""
-		command = "buy13"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "stock12"
-		type = LABEL
-		pos = 264,320
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "title"
-		type = LABEL
-		pos = 0,0
-		size = 291x50
-		anchor1 = 2,0
-		anchor2 = 99,12
-		font-family = ""
-		font-size = 12
-		font-style = "bold"
-		text-color = #000000
-		background-color = none
-		is-visible = true
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "Crazy Dave's vending machine"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "coinbutton"
-		type = BUTTON
-		pos = 280,0
-		size = 20x24
-		anchor1 = none
-		anchor2 = none
-		font-family = "monospace"
-		font-size = 15
-		font-style = "bold"
-		text-color = #ffff3e
-		background-color = #c0c0c0
-		is-visible = false
 		is-disabled = false
 		is-transparent = false
 		is-default = false
 		border = line
 		drop-zone = false
 		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "$"
-		image = ""
-		command = "skincmd \"vending;coin\""
-		is-flat = true
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "stock11"
-		type = LABEL
-		pos = 264,296
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
 		saved-params = ""
 		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "advert"
-		type = LABEL
-		pos = 120,420
-		size = 176x16
-		anchor1 = none
-		anchor2 = none
-		font-family = "serif"
-		font-size = 7
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = true
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "\" Alcohol is humanity's best friend \""
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "stock10"
-		type = LABEL
-		pos = 264,272
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "stock9"
-		type = LABEL
-		pos = 264,248
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "stock8"
-		type = LABEL
-		pos = 264,224
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "stock7"
-		type = LABEL
-		pos = 264,200
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "stock6"
-		type = LABEL
-		pos = 264,176
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "stock5"
-		type = LABEL
-		pos = 264,152
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "stock4"
-		type = LABEL
-		pos = 264,128
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "stock3"
-		type = LABEL
-		pos = 264,104
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "product12"
-		type = BUTTON
-		pos = 8,320
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #78a6c7
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "Soylent Green"
-		image = ""
-		command = "buy12"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product11"
-		type = BUTTON
-		pos = 8,296
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #8ba5b4
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "Blue Waffles"
-		image = ""
-		command = "buy11"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product10"
-		type = BUTTON
-		pos = 8,272
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #78a6c7
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "Metroid chips"
-		image = ""
-		command = "buy10"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product9"
-		type = BUTTON
-		pos = 8,248
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #8ba5b4
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "Chocolate Xenodildos"
-		image = ""
-		command = "buy9"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product8"
-		type = BUTTON
-		pos = 8,224
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #78a6c7
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "Chips"
-		image = ""
-		command = "buy8"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product7"
-		type = BUTTON
-		pos = 8,200
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #8ba5b4
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "THAT FAGGOT TRAITOR GEORGE melons"
-		image = ""
-		command = "buy7"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product6"
-		type = BUTTON
-		pos = 8,176
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #78a6c7
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "Peanis Cupcakes"
-		image = ""
-		command = "buy6"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product5"
-		type = BUTTON
-		pos = 8,152
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #8ba5b4
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "Doublebeard Bearded Special Wine"
-		image = ""
-		command = "buy5"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product4"
-		type = BUTTON
-		pos = 8,128
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #78a6c7
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "Caccavo Guaranteed Quality Tequilla"
-		image = ""
-		command = "buy4"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product3"
-		type = BUTTON
-		pos = 8,104
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #8ba5b4
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "TUNGSTEN TRIPLE GRIFFED"
-		image = ""
-		command = "buy3"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "product2"
-		type = BUTTON
-		pos = 8,80
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #78a6c7
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "4 No Raisins!"
-		image = ""
-		command = "buy2"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "stock2"
-		type = LABEL
-		pos = 264,80
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
-	elem "product1"
-		type = BUTTON
-		pos = 8,56
-		size = 256x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = #8ba5b4
-		is-visible = false
-		is-disabled = false
-		is-transparent = false
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = "is-checked"
-		on-size = ""
-		text = "Griffer's Delight"
-		image = ""
-		command = "buy1"
-		is-flat = false
-		stretch = false
-		is-checked = false
-		group = ""
-		button-type = pushbutton
-	elem "stock1"
-		type = LABEL
-		pos = 264,56
-		size = 24x20
-		anchor1 = none
-		anchor2 = none
-		font-family = ""
-		font-size = 0
-		font-style = ""
-		text-color = #000000
-		background-color = none
-		is-visible = false
-		is-disabled = false
-		is-transparent = true
-		is-default = false
-		border = none
-		drop-zone = false
-		right-click = false
-		saved-params = ""
-		on-size = ""
-		text = "10"
-		image = ""
-		image-mode = center
-		keep-aspect = false
-		align = center
-		text-wrap = false
+		command = ""
+		multi-line = true
+		is-password = false
+		no-command = false
 

@@ -1,11 +1,4 @@
-/mob/living/carbon/human/examine()
-	set src in oview()
-
-	if(!usr || !src)	return
-	if(((usr.disabilities & 128) || usr.blinded || usr.stat) && !(istype(usr,/mob/dead/observer/)))
-		usr << "<span class='notice'>Something is there but you can't see it.</span>"
-		return
-
+/mob/living/carbon/human/examine(mob/user)
 	var/skipgloves = 0
 	var/skipsuitstorage = 0
 	var/skipjumpsuit = 0
@@ -13,463 +6,430 @@
 	var/skipmask = 0
 	var/skipears = 0
 	var/skipeyes = 0
+	var/skipface = 0
 
 	//exosuits and helmets obscure our view and stuff.
-	if (src.wear_suit)
-		skipgloves = src.wear_suit.flags_inv & HIDEGLOVES
-		skipsuitstorage = src.wear_suit.flags_inv & HIDESUITSTORAGE
-		skipjumpsuit = src.wear_suit.flags_inv & HIDEJUMPSUIT
-		skipshoes = src.wear_suit.flags_inv & HIDESHOES
+	if(wear_suit)
+		skipgloves = wear_suit.flags_inv & HIDEGLOVES
+		skipsuitstorage = wear_suit.flags_inv & HIDESUITSTORAGE
+		skipjumpsuit = wear_suit.flags_inv & HIDEJUMPSUIT
+		skipshoes = wear_suit.flags_inv & HIDESHOES
 
-	if (src.head)
-		skipmask = src.head.flags_inv & HIDEMASK
-		skipeyes = src.head.flags_inv & HIDEEYES
-		skipears = src.head.flags_inv & HIDEEARS
+	if(head)
+		skipmask = head.flags_inv & HIDEMASK
+		skipeyes = head.flags_inv & HIDEEYES
+		skipears = head.flags_inv & HIDEEARS
+		skipface = head.flags_inv & HIDEFACE
 
-	// crappy hacks because you can't do \his[src] etc. I'm sorry this proc is so unreadable, blame the text macros :<
-	var/t_He = "It" //capitalised for use at the start of each line.
-	var/t_his = "its"
-	var/t_him = "it"
-	var/t_has = "has"
-	var/t_is = "is"
+	if(wear_mask)
+		skipface |= wear_mask.flags_inv & HIDEFACE
 
 	var/msg = "<span class='info'>*---------*\nThis is "
 
-	if( skipjumpsuit && (wear_mask || skipmask) ) //big suits/masks make it hard to tell their gender
-		t_He = "They"
-		t_his = "their"
-		t_him = "them"
-		t_has = "have"
-		t_is = "are"
+	var/datum/gender/T = gender_datums[gender]
+	if(skipjumpsuit && skipface) //big suits/masks/helmets make it hard to tell their gender
+		T = gender_datums[PLURAL]
 	else
-		if(src.icon)
-			msg += "\icon[src.icon] " //fucking BYOND: this should stop dreamseeker crashing if we -somehow- examine somebody before their icon is generated
-		switch(src.gender)
-			if(MALE)
-				t_He = "He"
-				t_his = "his"
-				t_him = "him"
-			if(FEMALE)
-				t_He = "She"
-				t_his = "her"
-				t_him = "her"
+		if(icon)
+			msg += "\icon[icon] " //fucking BYOND: this should stop dreamseeker crashing if we -somehow- examine somebody before their icon is generated
 
-	msg += "<EM>\a [src]</EM>!\n"
+	if(!T)
+		// Just in case someone VVs the gender to something strange. It'll runtime anyway when it hits usages, better to CRASH() now with a helpful message.
+		CRASH("Gender datum was null; key was '[(skipjumpsuit && skipface) ? PLURAL : gender]'")
+
+	msg += "<EM>[src.name]</EM>"
+	if(species.name != "Human")
+		msg += ", a <b><font color='[species.flesh_color]'>[species.name]</font></b>"
+	msg += "!\n"
 
 	//uniform
-	if (src.w_uniform && !skipjumpsuit)
-		if (src.w_uniform.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_is] wearing \icon[src.w_uniform] [src.w_uniform.gender==PLURAL?"some":"a"] blood-stained [src.w_uniform.name]!</span>\n"
+	if(w_uniform && !skipjumpsuit)
+		//Ties
+		var/tie_msg
+		if(istype(w_uniform,/obj/item/clothing/under))
+			var/obj/item/clothing/under/U = w_uniform
+			if(U.accessories.len)
+				tie_msg += ". Attached to it is [lowertext(english_list(U.accessories))]"
+
+		if(w_uniform.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.is] wearing \icon[w_uniform] [w_uniform.gender==PLURAL?"some":"a"] [(w_uniform.blood_color != "#030303") ? "blood" : "oil"]-stained [w_uniform.name][tie_msg]!</span>\n"
 		else
-			msg += "[t_He] [t_is] wearing \icon[src.w_uniform] \a [src.w_uniform].\n"
+			msg += "[T.He] [T.is] wearing \icon[w_uniform] \a [w_uniform][tie_msg].\n"
 
 	//head
-	if (src.head)
-		if (src.head.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_is] wearing \icon[src.head] [src.head.gender==PLURAL?"some":"a"] blood-stained [src.head.name] on [t_his] head!</span>\n"
+	if(head)
+		if(head.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.is] wearing \icon[head] [head.gender==PLURAL?"some":"a"] [(head.blood_color != "#030303") ? "blood" : "oil"]-stained [head.name] on [T.his] head!</span>\n"
 		else
-			msg += "[t_He] [t_is] wearing \icon[src.head] \a [src.head] on [t_his] head.\n"
+			msg += "[T.He] [T.is] wearing \icon[head] \a [head] on [T.his] head.\n"
 
 	//suit/armour
-	if (src.wear_suit)
-		if (src.wear_suit.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_is] wearing \icon[src.wear_suit] [src.wear_suit.gender==PLURAL?"some":"a"] blood-stained [src.wear_suit.name]!</span>\n"
+	if(wear_suit)
+		if(wear_suit.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.is] wearing \icon[wear_suit] [wear_suit.gender==PLURAL?"some":"a"] [(wear_suit.blood_color != "#030303") ? "blood" : "oil"]-stained [wear_suit.name]!</span>\n"
 		else
-			msg += "[t_He] [t_is] wearing \icon[src.wear_suit] \a [src.wear_suit].\n"
+			msg += "[T.He] [T.is] wearing \icon[wear_suit] \a [wear_suit].\n"
 
 		//suit/armour storage
-		if(src.s_store && !skipsuitstorage)
-			if(src.s_store.blood_DNA)
-				msg += "<span class='warning'>[t_He] [t_is] carrying \icon[src.s_store] [src.s_store.gender==PLURAL?"some":"a"] blood-stained [src.s_store.name] on [t_his] [src.wear_suit.name]!</span>\n"
+		if(s_store && !skipsuitstorage)
+			if(s_store.blood_DNA)
+				msg += "<span class='warning'>[T.He] [T.is] carrying \icon[s_store] [s_store.gender==PLURAL?"some":"a"] [(s_store.blood_color != "#030303") ? "blood" : "oil"]-stained [s_store.name] on [T.his] [wear_suit.name]!</span>\n"
 			else
-				msg += "[t_He] [t_is] carrying \icon[src.s_store] \a [src.s_store] on [t_his] [src.wear_suit.name].\n"
+				msg += "[T.He] [T.is] carrying \icon[s_store] \a [s_store] on [T.his] [wear_suit.name].\n"
 
 	//back
-	if (src.back)
-		if (src.back.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_has] \icon[src.back] [src.back.gender==PLURAL?"some":"a"] blood-stained [src.back] on [t_his] back.</span>\n"
+	if(back)
+		if(back.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.has] \icon[back] [back.gender==PLURAL?"some":"a"] [(back.blood_color != "#030303") ? "blood" : "oil"]-stained [back] on [T.his] back.</span>\n"
 		else
-			msg += "[t_He] [t_has] \icon[src.back] \a [src.back] on [t_his] back.\n"
+			msg += "[T.He] [T.has] \icon[back] \a [back] on [T.his] back.\n"
 
 	//left hand
-	if (src.l_hand)
-		if (src.l_hand.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_is] holding \icon[src.l_hand] [src.l_hand.gender==PLURAL?"some":"a"] blood-stained [src.l_hand.name] in [t_his] left hand!</span>\n"
+	if(l_hand)
+		if(l_hand.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.is] holding \icon[l_hand] [l_hand.gender==PLURAL?"some":"a"] [(l_hand.blood_color != "#030303") ? "blood" : "oil"]-stained [l_hand.name] in [T.his] left hand!</span>\n"
 		else
-			msg += "[t_He] [t_is] holding \icon[src.l_hand] \a [src.l_hand] in [t_his] left hand.\n"
+			msg += "[T.He] [T.is] holding \icon[l_hand] \a [l_hand] in [T.his] left hand.\n"
 
 	//right hand
-	if (src.r_hand)
-		if (src.r_hand.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_is] holding \icon[src.r_hand] [src.r_hand.gender==PLURAL?"some":"a"] blood-stained [src.r_hand.name] in [t_his] right hand!</span>\n"
+	if(r_hand)
+		if(r_hand.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.is] holding \icon[r_hand] [r_hand.gender==PLURAL?"some":"a"] [(r_hand.blood_color != "#030303") ? "blood" : "oil"]-stained [r_hand.name] in [T.his] right hand!</span>\n"
 		else
-			msg += "[t_He] [t_is] holding \icon[src.r_hand] \a [src.r_hand] in [t_his] right hand.\n"
+			msg += "[T.He] [T.is] holding \icon[r_hand] \a [r_hand] in [T.his] right hand.\n"
 
 	//gloves
-	if (src.gloves && !skipgloves)
-		if (src.gloves.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_has] \icon[src.gloves] [src.gloves.gender==PLURAL?"some":"a"] blood-stained [src.gloves.name] on [t_his] hands!</span>\n"
+	if(gloves && !skipgloves)
+		if(gloves.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.has] \icon[gloves] [gloves.gender==PLURAL?"some":"a"] [(gloves.blood_color != "#030303") ? "blood" : "oil"]-stained [gloves.name] on [T.his] hands!</span>\n"
 		else
-			msg += "[t_He] [t_has] \icon[src.gloves] \a [src.gloves] on [t_his] hands.\n"
-	else if (src.blood_DNA)
-		msg += "<span class='warning'>[t_He] [t_has] blood-stained hands!</span>\n"
+			msg += "[T.He] [T.has] \icon[gloves] \a [gloves] on [T.his] hands.\n"
+	else if(blood_DNA)
+		msg += "<span class='warning'>[T.He] [T.has] [(hand_blood_color != "#030303") ? "blood" : "oil"]-stained hands!</span>\n"
 
 	//handcuffed?
-	if (src.handcuffed)
-		msg += "[t_He] [t_is] \icon[src.handcuffed] handcuffed!\n"
+
+	//handcuffed?
+	if(handcuffed)
+		if(istype(handcuffed, /obj/item/weapon/handcuffs/cable))
+			msg += "<span class='warning'>[T.He] [T.is] \icon[handcuffed] restrained with cable!</span>\n"
+		else
+			msg += "<span class='warning'>[T.He] [T.is] \icon[handcuffed] handcuffed!</span>\n"
+
+	//buckled
+	if(buckled)
+		msg += "<span class='warning'>[T.He] [T.is] \icon[buckled] buckled to [buckled]!</span>\n"
 
 	//belt
-	if (src.belt)
-		if (src.belt.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_has] \icon[src.belt] [src.belt.gender==PLURAL?"some":"a"] blood-stained [src.belt.name] about [t_his] waist!</span>\n"
+	if(belt)
+		if(belt.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.has] \icon[belt] [belt.gender==PLURAL?"some":"a"] [(belt.blood_color != "#030303") ? "blood" : "oil"]-stained [belt.name] about [T.his] waist!</span>\n"
 		else
-			msg += "[t_He] [t_has] \icon[src.belt] \a [src.belt] about [t_his] waist.\n"
+			msg += "[T.He] [T.has] \icon[belt] \a [belt] about [T.his] waist.\n"
 
 	//shoes
-	if (src.shoes && !skipshoes)
-		if(src.shoes.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_is] wearing \icon[src.shoes] [src.shoes.gender==PLURAL?"some":"a"] blood-stained [src.shoes.name] on [t_his] feet!</span>\n"
+	if(shoes && !skipshoes)
+		if(shoes.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.is] wearing \icon[shoes] [shoes.gender==PLURAL?"some":"a"] [(shoes.blood_color != "#030303") ? "blood" : "oil"]-stained [shoes.name] on [T.his] feet!</span>\n"
 		else
-			msg += "[t_He] [t_is] wearing \icon[src.shoes] \a [src.shoes] on [t_his] feet.\n"
+			msg += "[T.He] [T.is] wearing \icon[shoes] \a [shoes] on [T.his] feet.\n"
+	else if(feet_blood_DNA)
+		msg += "<span class='warning'>[T.He] [T.has] [(feet_blood_color != "#030303") ? "blood" : "oil"]-stained feet!</span>\n"
 
 	//mask
-	if (src.wear_mask && !skipmask)
-		if (src.wear_mask.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_has] \icon[src.wear_mask] [src.wear_mask.gender==PLURAL?"some":"a"] blood-stained [src.wear_mask.name] on [t_his] face!</span>\n"
+	if(wear_mask && !skipmask)
+		if(wear_mask.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.has] \icon[wear_mask] [wear_mask.gender==PLURAL?"some":"a"] [(wear_mask.blood_color != "#030303") ? "blood" : "oil"]-stained [wear_mask.name] on [T.his] face!</span>\n"
 		else
-			msg += "[t_He] [t_has] \icon[src.wear_mask] \a [src.wear_mask] on [t_his] face.\n"
+			msg += "[T.He] [T.has] \icon[wear_mask] \a [wear_mask] on [T.his] face.\n"
 
 	//eyes
-	if (src.glasses && !skipeyes)
-		if (src.glasses.blood_DNA)
-			msg += "<span class='warning'>[t_He] [t_has] \icon[src.glasses] [src.glasses.gender==PLURAL?"some":"a"] blood-stained [src.glasses] covering [t_his] eyes!</span>\n"
+	if(glasses && !skipeyes)
+		if(glasses.blood_DNA)
+			msg += "<span class='warning'>[T.He] [T.has] \icon[glasses] [glasses.gender==PLURAL?"some":"a"] [(glasses.blood_color != "#030303") ? "blood" : "oil"]-stained [glasses] covering [T.his] eyes!</span>\n"
 		else
-			msg += "[t_He] [t_has] \icon[src.glasses] \a [src.glasses] covering [t_his] eyes.\n"
+			msg += "[T.He] [T.has] \icon[glasses] \a [glasses] covering [T.his] eyes.\n"
 
-	if (src.l_ear && !skipears)
-		msg += "[t_He] [t_has] has a \icon[src.l_ear] [src.l_ear.name] on [t_his] left ear.\n"
+	//left ear
+	if(l_ear && !skipears)
+		msg += "[T.He] [T.has] \icon[l_ear] \a [l_ear] on [T.his] left ear.\n"
 
-	if (src.r_ear && !skipears)
-		msg += "[t_He] [t_has] has a \icon[src.r_ear] [src.r_ear.name] on [t_his] right ear.\n"
+	//right ear
+	if(r_ear && !skipears)
+		msg += "[T.He] [T.has] \icon[r_ear] \a [r_ear] on [T.his] right ear.\n"
 
 	//ID
-	if (src.wear_id)
-		var/id
-		if(istype(src.wear_id, /obj/item/device/pda))
-			var/obj/item/device/pda/pda = src.wear_id
+	if(wear_id)
+		/*var/id
+		if(istype(wear_id, /obj/item/device/pda))
+			var/obj/item/device/pda/pda = wear_id
 			id = pda.owner
-		else if(istype(src.wear_id, /obj/item/weapon/card/id)) //just in case something other than a PDA/ID card somehow gets in the ID slot :[
-			var/obj/item/weapon/card/id/idcard = src.wear_id
+		else if(istype(wear_id, /obj/item/weapon/card/id)) //just in case something other than a PDA/ID card somehow gets in the ID slot :[
+			var/obj/item/weapon/card/id/idcard = wear_id
 			id = idcard.registered_name
-		if (id && (id != src.real_name) && (get_dist(src, usr) <= 1) && prob(10))
-			msg += "<span class='warning'>[t_He] [t_is] wearing \icon[src.wear_id] \a [src.wear_id] yet something doesn't seem right...</span>\n"
-		else
-			msg += "[t_He] [t_is] wearing \icon[src.wear_id] \a [src.wear_id].\n"
+		if(id && (id != real_name) && (get_dist(src, usr) <= 1) && prob(10))
+			msg += "<span class='warning'>[T.He] [T.is] wearing \icon[wear_id] \a [wear_id] yet something doesn't seem right...</span>\n"
+		else*/
+		msg += "[T.He] [T.is] wearing \icon[wear_id] \a [wear_id].\n"
 
 	//Jitters
-	if (src.is_jittery)
-		if(src.jitteriness >= 300)
-			msg += "<span class='warning'><B>[t_He] [t_is] convulsing violently!</B></span>\n"
-		else if(src.jitteriness >= 200)
-			msg += "<span class='warning'>[t_He] [t_is] extremely jittery.</span>\n"
-		else if(src.jitteriness >= 100)
-			msg += "<span class='warning'>[t_He] [t_is] twitching ever so slightly.</span>\n"
+	if(is_jittery)
+		if(jitteriness >= 300)
+			msg += "<span class='warning'><B>[T.He] [T.is] convulsing violently!</B></span>\n"
+		else if(jitteriness >= 200)
+			msg += "<span class='warning'>[T.He] [T.is] extremely jittery.</span>\n"
+		else if(jitteriness >= 100)
+			msg += "<span class='warning'>[T.He] [T.is] twitching ever so slightly.</span>\n"
 
-	if (src.suiciding)
-		msg += "<span class='warning'>[t_He] [t_has] bitten off [t_his] own tongue and [t_has] suffered major bloodloss!</span>\n"
+	//splints
+	for(var/organ in list("l_leg","r_leg","l_arm","r_arm"))
+		var/obj/item/organ/external/o = get_organ(organ)
+		if(o && o.status & ORGAN_SPLINTED)
+			msg += "<span class='warning'>[T.He] [T.has] a splint on [T.his] [o.name]!</span>\n"
+
+	if(mSmallsize in mutations)
+		msg += "[T.He] [T.is] small halfling!\n"
 
 	var/distance = get_dist(usr,src)
 	if(istype(usr, /mob/dead/observer) || usr.stat == 2) // ghosts can see anything
 		distance = 1
+	if (src.stat)
+		msg += "<span class='warning'>[T.He] [T.is]n't responding to anything around [T.him] and seems to be asleep.</span>\n"
+		if((stat == 2 || src.losebreath) && distance <= 3)
+			msg += "<span class='warning'>[T.He] [T.does] not appear to be breathing.</span>\n"
+		if(istype(usr, /mob/living/carbon/human) && !usr.stat && Adjacent(usr))
+			usr.visible_message("<b>[usr]</b> checks [src]'s pulse.", "You check [src]'s pulse.")
+		spawn(15)
+			if(distance <= 1 && usr.stat != 1)
+				if(pulse == PULSE_NONE)
+					usr << "<span class='deadsay'>[T.He] [T.has] no pulse[src.client ? "" : " and [T.his] soul has departed"]...</span>"
+				else
+					usr << "<span class='deadsay'>[T.He] [T.has] a pulse!</span>"
 
-	if (src.stat == 1 || stat == 2)
-		msg += "<span class='warning'>[name] doesn't seem to be responding to anything around [t_him], [t_his] eyes closed as though asleep.</span>\n"
-		if((!isbreathing || holdbreath) && distance <= 3)
-			msg += "<span class='warning'>[name] does not appear to be breathing.</span>\n"
-		if(istype(usr, /mob/living/carbon/human) && usr.stat == 0 && src.stat == 1 && distance <= 1)
-			for(var/mob/O in viewers(usr.loc, null))
-				O.show_message("[usr] checks [src]'s pulse.", 1)
-			spawn(15)
-				usr << "\blue [name] has a pulse!"
-
-	if (src.stat == 2 || (changeling && changeling.changeling_fakedeath == 1))
-		if(distance <= 1)
-			if(istype(usr, /mob/living/carbon/human) && usr.stat == 0)
-				for(var/mob/O in viewers(usr.loc, null))
-					O.show_message("[usr] checks [src]'s pulse.", 1)
-			spawn(15)
-				usr << "\red [name] has no pulse!"
-
-/*	if (src.getBruteLoss())
-		if (src.getBruteLoss() < 30)
-			usr << "\red [src.name] looks slightly injured!"
-		else
-			usr << "\red <B>[src.name] looks severely injured!</B>"*/
-
-	if (src.cloneloss)
-		if (src.cloneloss < 30)
-			msg += "<span class='warning'>[src.name] looks slightly... unfinished?</span>\n"
-		else
-			msg += "<span class='warning'>[src.name] looks very... unfinished?</B></span>\n"
-
-/*	if (src.getFireLoss())
-		if (src.getFireLoss() < 30)
-			usr << "\red [src.name] looks slightly burned!"
-		else
-			usr << "\red <B>[src.name] looks severely burned!</B>"*/
+	if(fire_stacks)
+		msg += "[T.He] [T.is] covered in some liquid.\n"
+	if(on_fire)
+		msg += "<span class='warning'>[T.He] [T.is] on fire!.</span>\n"
 	msg += "<span class='warning'>"
-	if (src.nutrition < 100)
-		msg += "[t_He] [t_is] severely malnourished.\n"
-	else if (src.nutrition >= 500)
-		if (usr.nutrition < 100)
-			msg += "[t_He] [t_is] plump and delicious looking - Like a fat little piggy. A tasty piggy.\n"
-		else
-			msg += "[t_He] [t_is] quite chubby.\n"
+
+	/*
+	if(nutrition < 100)
+		msg += "[T.He] [T.is] severely malnourished.\n"
+	else if(nutrition >= 500)
+		/*if(usr.nutrition < 100)
+			msg += "[T.He] [T.is] plump and delicious looking - Like a fat little piggy. A tasty piggy.\n"
+		else*/
+		msg += "[T.He] [T.is] quite chubby.\n"
+	*/
 
 	msg += "</span>"
 
+	if(getBrainLoss() >= 60)
+		msg += "[T.He] [T.has] a stupid expression on [T.his] face.\n"
 
-	if (src.getBrainLoss() >= 60 && !stat)
-		msg += "[t_He] [t_has] a stupid expression on [t_his] face.\n"
+	if(species.show_ssd && (!species.has_organ["brain"] || has_brain()) && stat != DEAD)
+		if(!key)
+			msg += "<span class='deadsay'>[T.He] [T.is] [species.show_ssd]. It doesn't look like [T.he] [T.is] waking up anytime soon.</span>\n"
+		else if(!client)
+			msg += "<span class='deadsay'>[T.He] [T.is] [species.show_ssd].</span>\n"
 
-	if (!src.client)
-		msg += "[t_He] [t_has] a vacant, braindead stare...\n"
-
-	var/list/wound_descriptions = list()
 	var/list/wound_flavor_text = list()
-	for(var/named in organs)
-		var/datum/organ/external/temp = organs[named]
-		if(temp)
-			if(temp.destroyed)
-				wound_flavor_text["[temp.display_name]"] = "<span class='warning'><b>[src.name] is missing [t_his] [temp.display_name].</b></span>\n"
-				continue
-			if(temp.wounds)
-				var/list/wounds = list(list(),list(),list(),list(),list(),list())
-				for(var/datum/organ/wound/w in temp.wounds)
-					switch(w.healing_state)
-						if(0)
-							var/list/cut = wounds[1]
-							cut += w
-							wounds[1] = cut
-						if(1)
-							var/list/cut = wounds[2]
-							cut += w
-							wounds[2] = cut
-						if(2)
-							var/list/cut = wounds[3]
-							cut += w
-							wounds[3] = cut
-						if(3)
-							var/list/cut = wounds[4]
-							cut += w
-							wounds[4] = cut
-						if(4)
-							var/list/cut = wounds[5]
-							cut += w
-							wounds[5] = cut
-						if(5)
-							var/list/cut = wounds[6]
-							cut += w
-							wounds[6] = cut
-				wound_descriptions["[temp.display_name]"] = wounds
-			else
-				wound_flavor_text["[temp.display_name]"] = ""
-	//Now that we have a big list of all the wounds, on all the limbs.
 	var/list/is_bleeding = list()
-	for(var/named in wound_descriptions)
-		var/list/wound_states = wound_descriptions[named]
-		var/list/flavor_text = list()
-		for(var/i = 1, i <= 6, i++)
-			var/list/wound_state = wound_states[i] //All wounds at this level of healing.
-			var/list/tally = list("cut" = 0, "deep cut" = 0, "flesh wound" = 0, "gaping wound" = 0, "big gaping wound" = 0, "massive wound" = 0,\
-			 "tiny bruise" = 0, "small bruise" = 0, "moderate bruise" = 0, "large bruise" = 0, "huge bruise" = 0, "monumental bruise" = 0,\
-			 "small burn" = 0, "moderate burn" = 0, "large burn" = 0, "severe burn" = 0, "deep burn" = 0, "carbonised area" = 0) //How many wounds of what size.
-			for(var/datum/organ/wound/w in wound_state)
-				if(w.bleeding && !is_bleeding[named]) is_bleeding[named] = 1
-				switch(w.wound_size)
-					if(1)
-						switch(w.wound_type)
-							if(0)
-								tally["cut"] += 1
-							if(1)
-								tally["tiny bruise"] += 1
-							if(2)
-								tally["small burn"] += 1
-					if(2)
-						switch(w.wound_type)
-							if(0)
-								tally["deep cut"] += 1
-							if(1)
-								tally["small bruise"] += 1
-							if(2)
-								tally["moderate burn"] += 1
-					if(3)
-						switch(w.wound_type)
-							if(0)
-								tally["flesh wound"] += 1
-							if(1)
-								tally["moderate bruise"] += 1
-							if(2)
-								tally["large burn"] += 1
-					if(4)
-						switch(w.wound_type)
-							if(0)
-								tally["gaping wound"] += 1
-							if(1)
-								tally["large bruise"] += 1
-							if(2)
-								tally["severe burn"] += 1
-					if(5)
-						switch(w.wound_type)
-							if(0)
-								tally["big gaping wound"] += 1
-							if(1)
-								tally["huge bruise"] += 1
-							if(2)
-								tally["deep burn"] += 1
-					if(6)
-						switch(w.wound_type)
-							if(0)
-								tally["massive wound"] += 1
-							if(1)
-								tally["monumental bruise"] += 1
-							if(2)
-								tally["carbonised area"] += 1
-			for(var/tallied in tally)
-				if(!tally[tallied])
+
+	for(var/organ_tag in species.has_limbs)
+
+		var/list/organ_data = species.has_limbs[organ_tag]
+		var/organ_descriptor = organ_data["descriptor"]
+
+		var/obj/item/organ/external/E = organs_by_name[organ_tag]
+		if(!E)
+			wound_flavor_text["[organ_descriptor]"] = "<span class='warning'><b>[T.He] [T.is] missing [T.his] [organ_descriptor].</b></span>\n"
+		else if(E.is_stump())
+			wound_flavor_text["[organ_descriptor]"] = "<span class='warning'><b>[T.He] [T.has] a stump where [T.his] [organ_descriptor] should be.</b></span>\n"
+		else
+			continue
+
+	for(var/obj/item/organ/external/temp in organs)
+		if(temp)
+			if(temp.status & ORGAN_ROBOT)
+				if(!(temp.brute_dam + temp.burn_dam))
+					wound_flavor_text["[temp.name]"] = "<span class='warning'>[T.He] [T.has] a robot [temp.name]!</span>\n"
 					continue
-				//if(flavor_text_string && tally[tallied])
-				//	for(
-				//	flavor_text_string += pick(list(", as well as", ", in addition to")) //add more later.
-				var/tallied_rename = list("cut" = "cut","deep cut" = "deep cut", "flesh wound" = "flesh wound",\
-				"gaping wound" = "gaping wound", "big gaping wound" = "big gaping wound", "massive wound" = "massive wound",\
-				"tiny bruise" = "tiny bruise", "small bruise" = "small bruise", "moderate bruise" = "moderate bruise",\
-				"large bruise" = "large bruise", "huge bruise" = "huge bruise", "monumental bruise" = "monumental bruise",\
-			 	"small burn" = "small burn", "moderate burn" = "moderate burn", "large burn" = "large burn",\
-			 	"severe burn" = "severe burn", "deep burn" = "deep burn", "carbonised area" = "carbonised area")
-				switch(i)
-					if(2) //Healing wounds.
-						if(tallied in list("cut","tiny bruise","small burn"))
-							continue
-						tallied_rename = list("deep cut" = "clotted cut", "flesh wound" = "small bandaged wound",\
-						"gaping wound" = "bandaged wound", "big gaping wound" = "gauze wrapped wound",\
-						"massive wound" = "massive blood soaked bandage", "small bruise" = "small bruise",\
-						"moderate bruise" = "moderate bruise", "large bruise" = "large bruise",\
-						"huge bruise" = "huge bruise", "monumental bruise" = "monumental bruise",\
-						"moderate burn" = "moderate salved burn", "large burn" = "large salved burn",\
-						"severe burn" = "severe salved burn", "deep burn" = "deep salved burn",\
-						"carbonised area" = "treated carbonised area")
-					if(3)
-						if(tallied in list("cut","tiny bruise","small burn"))
-							continue
-						tallied_rename = list("deep cut" = "fading cut", "flesh wound" = "small healing wound",\
-						"gaping wound" = "healing wound", "big gaping wound" = "big healing wound",\
-						"massive wound" = "massive healing wound", "small bruise" = "tiny bruise",\
-						"moderate bruise" = "small bruise", "large bruise" = "moderate bruise",\
-						"huge bruise" = "large bruise", "monumental bruise" = "huge bruise",\
-						"moderate burn" = "healing moderate burn", "large burn" = "healing large burn",\
-						"severe burn" = "healing severe burn", "deep burn" = "healing deep burn",\
-						"carbonised area" = "slowly healing carbonised area")
-					if(4)
-						if(tallied in list("cut","deep cut","tiny bruise", "small bruise","small burn", "moderate burn"))
-							continue
-						tallied_rename = list("flesh wound" = "small red scar", "gaping wound" = "angry straight scar",\
-						"big gaping wound" = "jagged angry scar", "massive wound" = "gigantic angry scar",\
-						"moderate bruise" = "tiny bruise", "large bruise" = "small bruise",\
-						"huge bruise" = "moderate bruise", "monumental bruise" = "large bruise",\
-						"large burn" = "large burn scar", "severe burn" = "severe burn scar",\
-						 "deep burn" = "deep burn scar", "carbonised area" = "healing carbonised area")
-					if(5)
-						if(tallied in list("cut","deep cut","tiny bruise", "small bruise", "moderate bruise","small burn", "moderate burn"))
-							continue
-						tallied_rename = list("flesh wound" = "small scar", "gaping wound" = "straight scar",\
-						"big gaping wound" = "jagged scar", "massive wound" = "gigantic scar",\
-						"large bruise" = "tiny bruise",\
-						"huge bruise" = "small bruise", "monumental bruise" = "moderate bruise",\
-						"large burn" = "large burn scar", "severe burn" = "severe burn scar",\
-						 "deep burn" = "deep burn scar", "carbonised area" = "large scarred area")
-					if(6)
-						if(tallied in list("cut","deep cut","flesh wound","tiny bruise", "small bruise", "moderate bruise", "large bruise", "huge bruise","small burn", "moderate burn"))
-							continue
-						tallied_rename = list("gaping wound" = "straight scar",\
-						"big gaping wound" = "jagged scar", "massive wound" = "gigantic scar",\
-						"monumental bruise" = "tiny bruise",\
-						"large burn" = "large burn scar", "severe burn" = "severe burn scar",\
-						 "deep burn" = "deep burn scar", "carbonised area" = "large scarred area")
-				var/list/no_exclude = list("gaping wound", "big gaping wound", "massive wound", "large bruise",\
-				"huge bruise", "massive bruise", "severe burn", "large burn", "deep burn", "carbonised area")
-				switch(tally[tallied])
-					if(1)
-						if(!flavor_text.len)
-							flavor_text += "<span class='warning'>[src] has[prob(4) && !(tallied in no_exclude)  ? " what might be" : ""] a [tallied_rename[tallied]]"
-						else
-							flavor_text += "[prob(4) && !(tallied in no_exclude) ? " what might be" : ""] a [tallied_rename[tallied]]"
-					if(2)
-						if(!flavor_text.len)
-							flavor_text += "<span class='warning'>[src] has[prob(4) && !(tallied in no_exclude) ? " what might be" : ""] a pair of [tallied_rename[tallied]]s"
-						else
-							flavor_text += "[prob(4) && !(tallied in no_exclude) ? " what might be" : ""] a pair of [tallied_rename[tallied]]s"
-					if(3 to 5)
-						if(!flavor_text.len)
-							flavor_text += "<span class='warning'>[src] has several [tallied_rename[tallied]]s"
-						else
-							flavor_text += " several [tallied_rename[tallied]]s"
-					if(6 to INFINITY)
-						if(!flavor_text.len)
-							flavor_text += "<span class='warning'>[src] has a bunch of [tallied_rename[tallied]]s"
-						else
-							flavor_text += " a ton of [tallied_rename[tallied]]s"
-		if(flavor_text.len)
-			var/flavor_text_string = ""
-			for(var/text = 1, text <= flavor_text.len, text++)
-				if(text == flavor_text.len && flavor_text.len > 1)
-					flavor_text_string += ", and"
-				else if(flavor_text.len > 1)
-					flavor_text_string += ","
-				flavor_text_string += flavor_text[text]
-			flavor_text_string += " on [t_his] [named].</span><br>"
-			wound_flavor_text["[named]"] = flavor_text_string
-	if(wound_flavor_text["head"] && !skipmask && !(wear_mask && istype(wear_mask, /obj/item/clothing/mask/gas)))
+				else
+					wound_flavor_text["[temp.name]"] = "<span class='warning'>[T.He] [T.has] a robot [temp.name]. It has[temp.get_wounds_desc()]!</span>\n"
+			else if(temp.wounds.len > 0 || temp.open)
+				if(temp.is_stump() && temp.parent_organ && organs_by_name[temp.parent_organ])
+					var/obj/item/organ/external/parent = organs_by_name[temp.parent_organ]
+					wound_flavor_text["[temp.name]"] = "<span class='warning'>[T.He] [T.has] [temp.get_wounds_desc()] on [T.his] [parent.name].</span><br>"
+				else
+					wound_flavor_text["[temp.name]"] = "<span class='warning'>[T.He] [T.has] [temp.get_wounds_desc()] on [T.his] [temp.name].</span><br>"
+				if(temp.status & ORGAN_BLEEDING)
+					is_bleeding["[temp.name]"] = "<span class='danger'>[T.His] [temp.name] is bleeding!</span><br>"
+			else
+				wound_flavor_text["[temp.name]"] = ""
+			if(temp.dislocated == 2)
+				wound_flavor_text["[temp.name]"] += "<span class='warning'>[T.His] [temp.joint] is dislocated!</span><br>"
+			if(((temp.status & ORGAN_BROKEN) && temp.brute_dam > temp.min_broken_damage) || (temp.status & ORGAN_MUTATED))
+				wound_flavor_text["[temp.name]"] += "<span class='warning'>[T.His] [temp.name] is dented and swollen!</span><br>"
+
+	//Handles the text strings being added to the actual description.
+	//If they have something that covers the limb, and it is not missing, put flavortext.  If it is covered but bleeding, add other flavortext.
+
+	// ***********************************************************************************
+	// THIS NEEDS TO BE ENTIRELY REWRITTEN. Commenting out for now, BADLY NEEDS REWRITING.
+	// ***********************************************************************************
+
+	/*
+	var/display_chest = 0
+	var/display_shoes = 0
+	var/display_gloves = 0
+
+	if(wound_flavor_text["head"] && (is_destroyed["head"] || (!skipmask && !(wear_mask && istype(wear_mask, /obj/item/clothing/mask/gas)))))
 		msg += wound_flavor_text["head"]
 	else if(is_bleeding["head"])
-		msg += "<span class='warning'>[src] has blood running down [t_his] face!</span>\n"
-	if(wound_flavor_text["chest"] && !w_uniform && !skipjumpsuit)
-		msg += wound_flavor_text["chest"]
-	else if(is_bleeding["chest"])
-		msg += "<span class='warning'>[src] has blood from under [t_his] clothing!</span>\n"
-	if(wound_flavor_text["left arm"] && !w_uniform && !skipjumpsuit)
+		msg += "<span class='warning'>[src] [T.has] blood running down [T.his] face!</span>\n"
+
+	if(wound_flavor_text["upper body"] && !w_uniform && !skipjumpsuit) //No need.  A missing chest gibs you.
+		msg += wound_flavor_text["upper body"]
+	else if(is_bleeding["upper body"])
+		display_chest = 1
+
+	if(wound_flavor_text["left arm"] && (is_destroyed["left arm"] || (!w_uniform && !skipjumpsuit)))
 		msg += wound_flavor_text["left arm"]
-	if(wound_flavor_text["left hand"] && !gloves && !skipgloves)
+	else if(is_bleeding["left arm"])
+		display_chest = 1
+
+	if(wound_flavor_text["left hand"] && (is_destroyed["left hand"] || (!gloves && !skipgloves)))
 		msg += wound_flavor_text["left hand"]
 	else if(is_bleeding["left hand"])
-		msg += "<span class='warning'>[src] has blood running from under [t_his] gloves!</span>\n"
-	if(wound_flavor_text["right arm"] && !w_uniform && !skipjumpsuit)
+		display_gloves = 1
+
+	if(wound_flavor_text["right arm"] && (is_destroyed["right arm"] || (!w_uniform && !skipjumpsuit)))
 		msg += wound_flavor_text["right arm"]
-	if(wound_flavor_text["right hand"] && !gloves && !skipgloves)
+	else if(is_bleeding["right arm"])
+		display_chest = 1
+
+	if(wound_flavor_text["right hand"] && (is_destroyed["right hand"] || (!gloves && !skipgloves)))
 		msg += wound_flavor_text["right hand"]
 	else if(is_bleeding["right hand"])
-		msg += "<span class='warning'>[src] has blood running from under [t_his] gloves!</span>\n"
-	if(wound_flavor_text["groin"] && !w_uniform && !skipjumpsuit)
-		msg += wound_flavor_text["groin"]
-	if(wound_flavor_text["left leg"] && !w_uniform && !skipjumpsuit)
+		display_gloves = 1
+
+	if(wound_flavor_text["lower body"] && (is_destroyed["lower body"] || (!w_uniform && !skipjumpsuit)))
+		msg += wound_flavor_text["lower body"]
+	else if(is_bleeding["lower body"])
+		display_chest = 1
+
+	if(wound_flavor_text["left leg"] && (is_destroyed["left leg"] || (!w_uniform && !skipjumpsuit)))
 		msg += wound_flavor_text["left leg"]
-	if(wound_flavor_text["left foot"]&& !shoes && !skipshoes)
+	else if(is_bleeding["left leg"])
+		display_chest = 1
+
+	if(wound_flavor_text["left foot"]&& (is_destroyed["left foot"] || (!shoes && !skipshoes)))
 		msg += wound_flavor_text["left foot"]
 	else if(is_bleeding["left foot"])
-		msg += "<span class='warning'>[src] has blood running from [t_his] shoes!</span>\n"
-	if(wound_flavor_text["right leg"] && !w_uniform && !skipjumpsuit)
+		display_shoes = 1
+	if(wound_flavor_text["right leg"] && (is_destroyed["right leg"] || (!w_uniform && !skipjumpsuit)))
 		msg += wound_flavor_text["right leg"]
-	if(wound_flavor_text["right foot"]&& !shoes  && !skipshoes)
+	else if(is_bleeding["right leg"])
+		display_chest = 1
+	if(wound_flavor_text["right foot"]&& (is_destroyed["right foot"] || (!shoes  && !skipshoes)))
 		msg += wound_flavor_text["right foot"]
 	else if(is_bleeding["right foot"])
-		msg += "<span class='warning'>[src] has blood running from [t_his] shoes!</span>\n"
+		display_shoes = 1
+
+	if(display_chest)
+		msg += "<span class='danger'>[src] [T.has] blood soaking through from under [T.his] clothing!</span>\n"
+	if(display_shoes)
+		msg += "<span class='danger'>[src] [T.has] blood running from [T.his] shoes!</span>\n"
+	if(display_gloves)
+		msg += "<span class='danger'>[src] [T.has] blood running from under [T.his] gloves!</span>\n"
+	*/
+
+	for(var/limb in wound_flavor_text)
+		msg += wound_flavor_text[limb]
+		is_bleeding[limb] = null
+	for(var/limb in is_bleeding)
+		msg += is_bleeding[limb]
+	for(var/implant in get_visible_implants(0))
+		msg += "<span class='danger'>[src] [T.has] \a [implant] sticking out of [T.his] flesh!</span>\n"
+	if(digitalcamo)
+		msg += "[T.He] [T.is] repulsively uncanny!\n"
+
+	if(hasHUD(usr,"security"))
+		var/perpname = "wot"
+		var/criminal = "None"
+
+		if(wear_id)
+			var/obj/item/weapon/card/id/I = wear_id.GetID()
+			if(I)
+				perpname = I.registered_name
+			else
+				perpname = name
+		else
+			perpname = name
+
+		if(perpname)
+			for (var/datum/data/record/E in data_core.general)
+				if(E.fields["name"] == perpname)
+					for (var/datum/data/record/R in data_core.security)
+						if(R.fields["id"] == E.fields["id"])
+							criminal = R.fields["criminal"]
+
+			msg += "<span class = 'deptradio'>Criminal status:</span> <a href='?src=\ref[src];criminal=1'>\[[criminal]\]</a>\n"
+			msg += "<span class = 'deptradio'>Security records:</span> <a href='?src=\ref[src];secrecord=`'>\[View\]</a>  <a href='?src=\ref[src];secrecordadd=`'>\[Add comment\]</a>\n"
+
+	if(hasHUD(usr,"medical"))
+		var/perpname = "wot"
+		var/medical = "None"
+
+		if(wear_id)
+			if(istype(wear_id,/obj/item/weapon/card/id))
+				perpname = wear_id:registered_name
+			else if(istype(wear_id,/obj/item/device/pda))
+				var/obj/item/device/pda/tempPda = wear_id
+				perpname = tempPda.owner
+		else
+			perpname = src.name
+
+		for (var/datum/data/record/E in data_core.general)
+			if (E.fields["name"] == perpname)
+				for (var/datum/data/record/R in data_core.general)
+					if (R.fields["id"] == E.fields["id"])
+						medical = R.fields["p_stat"]
+
+		msg += "<span class = 'deptradio'>Physical status:</span> <a href='?src=\ref[src];medical=1'>\[[medical]\]</a>\n"
+		msg += "<span class = 'deptradio'>Medical records:</span> <a href='?src=\ref[src];medrecord=`'>\[View\]</a> <a href='?src=\ref[src];medrecordadd=`'>\[Add comment\]</a>\n"
 
 
-//		if(w.bleeding)
-//			usr << "\red [src.name] is bleeding from a [sizetext] on [t_his] [temp.display_name]."
-//			continue
+	if(print_flavor_text()) msg += "[print_flavor_text()]\n"
 
-	msg += print_flavor_text()
+	msg += "*---------*</span>"
+	if (pose)
+		if( findtext(pose,".",lentext(pose)) == 0 && findtext(pose,"!",lentext(pose)) == 0 && findtext(pose,"?",lentext(pose)) == 0 )
+			pose = addtext(pose,".") //Makes sure all emotes end with a period.
+		msg += "\n[T.He] [T.is] [pose]"
 
-	msg += "\blue *---------*"
-	usr << msg
+	user << msg
+
+//Helper procedure. Called by /mob/living/carbon/human/examine() and /mob/living/carbon/human/Topic() to determine HUD access to security and medical records.
+/proc/hasHUD(mob/M as mob, hudtype)
+	if(istype(M, /mob/living/carbon/human))
+		var/mob/living/carbon/human/H = M
+		switch(hudtype)
+			if("security")
+				return istype(H.glasses, /obj/item/clothing/glasses/hud/security) || istype(H.glasses, /obj/item/clothing/glasses/sunglasses/sechud)
+			if("medical")
+				return istype(H.glasses, /obj/item/clothing/glasses/hud/health)
+			else
+				return 0
+	else if(istype(M, /mob/living/silicon/robot))
+		var/mob/living/silicon/robot/R = M
+		switch(hudtype)
+			if("security")
+				return istype(R.module_state_1, /obj/item/borg/sight/hud/sec) || istype(R.module_state_2, /obj/item/borg/sight/hud/sec) || istype(R.module_state_3, /obj/item/borg/sight/hud/sec)
+			if("medical")
+				return istype(R.module_state_1, /obj/item/borg/sight/hud/med) || istype(R.module_state_2, /obj/item/borg/sight/hud/med) || istype(R.module_state_3, /obj/item/borg/sight/hud/med)
+			else
+				return 0
+	else
+		return 0

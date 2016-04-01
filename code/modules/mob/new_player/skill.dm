@@ -13,10 +13,10 @@ datum/skill/var
 
 var/global/list/SKILLS = null
 var/list/SKILL_ENGINEER = list("field" = "Engineering", "EVA" = SKILL_BASIC, "construction" = SKILL_ADEPT, "electrical" = SKILL_BASIC, "engines" = SKILL_ADEPT)
-var/list/SKILL_ROBOTICIST = list("field" = "Science", "devices" = SKILL_ADEPT, "electrical" = SKILL_BASIC, "computer" = SKILL_ADEPT, "anatomy" = SKILL_BASIC)
+var/list/SKILL_ORGAN_ROBOTICIST = list("field" = "Science", "devices" = SKILL_ADEPT, "electrical" = SKILL_BASIC, "computer" = SKILL_ADEPT, "anatomy" = SKILL_BASIC)
 var/list/SKILL_SECURITY_OFFICER = list("field" = "Security", "combat" = SKILL_BASIC, "weapons" = SKILL_ADEPT, "law" = SKILL_ADEPT, "forensics" = SKILL_BASIC)
 var/list/SKILL_CHEMIST = list("field" = "Science", "chemistry" = SKILL_ADEPT, "science" = SKILL_ADEPT, "medical" = SKILL_BASIC, "devices" = SKILL_BASIC)
-var/global/list/SKILL_PRE = list("Engineer" = SKILL_ENGINEER, "Roboticist" = SKILL_ROBOTICIST, "Security Officer" = SKILL_SECURITY_OFFICER, "Chemist" = SKILL_CHEMIST)
+var/global/list/SKILL_PRE = list("Engineer" = SKILL_ENGINEER, "Roboticist" = SKILL_ORGAN_ROBOTICIST, "Security Officer" = SKILL_SECURITY_OFFICER, "Chemist" = SKILL_CHEMIST)
 
 datum/skill/management
     ID = "management"
@@ -61,8 +61,8 @@ datum/skill/management
 
 datum/skill/knowledge/law
     ID = "law"
-    name = "NanoTrasen Law"
-    desc = "Your knowledge of NanoTrasen law and procedures. This includes space law, as well as general station rulings and procedures. A low level in this skill is typical for security officers, a high level in this skill is typical for captains."
+    name = "Corporate Law"
+    desc = "Your knowledge of corporate law and procedures. This includes Corporate Regulations, as well as general station rulings and procedures. A low level in this skill is typical for security officers, a high level in this skill is typical for captains."
     field = "Security"
     secondary = 1
 
@@ -168,30 +168,7 @@ proc/setup_skills()
 
 
 mob/living/carbon/human/proc/GetSkillClass(points)
-	// skill classes describe how your character compares in total points
-	var/original_points = points
-	points -= min(round((age - 20) / 2.5), 4) // every 2.5 years after 20, one extra skillpoint
-	if(age > 30)
-		points -= round((age - 30) / 5) // every 5 years after 30, one extra skillpoint
-	if(original_points > 0 && points <= 0) points = 1
-	switch(points)
-		if(0)
-			return "Unconfigured"
-		if(1 to 2)
-			return "Terrifying"
-		if(4 to 6)
-			return "Below Average"
-		if(7 to 10)
-			return "Average"
-		if(11 to 14)
-			return "Above Average"
-		if(15 to 18)
-			return "Exceptional"
-		if(19 to 24)
-			return "Genius"
-		if(24 to 1000)
-			return "God"
-
+	return CalculateSkillClass(points, age)
 
 proc/show_skill_window(var/mob/user, var/mob/living/carbon/human/M)
 	if(!istype(M)) return

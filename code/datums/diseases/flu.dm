@@ -15,8 +15,14 @@
 	..()
 	switch(stage)
 		if(2)
-			if(affected_mob.sleeping && prob(20))
-				affected_mob << "\blue You feel better."
+/*
+			if(affected_mob.sleeping && prob(20))  //removed until sleeping is fixed --Blaank
+				affected_mob << "<span class='notice'>You feel better.</span>"
+				stage--
+				return
+*/
+			if(affected_mob.lying && prob(20))  //added until sleeping is fixed --Blaank
+				affected_mob << "<span class='notice'>You feel better.</span>"
 				stage--
 				return
 			if(prob(1))
@@ -24,18 +30,24 @@
 			if(prob(1))
 				affected_mob.emote("cough")
 			if(prob(1))
-				affected_mob << "\red Your muscles ache."
+				affected_mob << "<span class='warning'>Your muscles ache.</span>"
 				if(prob(20))
 					affected_mob.take_organ_damage(1)
 			if(prob(1))
-				affected_mob << "\red Your stomach hurts."
+				affected_mob << "<span class='warning'>Your stomach hurts.</span>"
 				if(prob(20))
 					affected_mob.adjustToxLoss(1)
 					affected_mob.updatehealth()
 
 		if(3)
-			if(affected_mob.sleeping && prob(15))
-				affected_mob << "\blue You feel better."
+/*
+			if(affected_mob.sleeping && prob(15))  //removed until sleeping is fixed
+				affected_mob << "<span class='notice'>You feel better.</span>"
+				stage--
+				return
+*/
+			if(affected_mob.lying && prob(15))  //added until sleeping is fixed
+				affected_mob << "<span class='notice'>You feel better.</span>"
 				stage--
 				return
 			if(prob(1))
@@ -43,17 +55,12 @@
 			if(prob(1))
 				affected_mob.emote("cough")
 			if(prob(1))
-				affected_mob << "\red Your muscles ache."
+				affected_mob << "<span class='warning'>Your muscles ache.</span>"
 				if(prob(20))
 					affected_mob.take_organ_damage(1)
 			if(prob(1))
-				affected_mob << "\red Your stomach hurts."
+				affected_mob << "<span class='warning'>Your stomach hurts.</span>"
 				if(prob(20))
 					affected_mob.adjustToxLoss(1)
 					affected_mob.updatehealth()
-			if(prob(25))
-				affected_mob << "\red The world around you feels surreal"
-				if(prob(50))
-					affected_mob.hallucination += 100
-					shake_camera(affected_mob,20)
 	return

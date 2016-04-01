@@ -1,102 +1,93 @@
 // AI (i.e. game AI, not the AI player) controlled bots
 
 /obj/machinery/bot
-	icon = 'aibots.dmi'
+	icon = 'icons/obj/aibots.dmi'
 	layer = MOB_LAYER
+	light_range = 3
+	use_power = 0
 	var/obj/item/weapon/card/id/botcard			// the ID card that the bot "holds"
 	var/on = 1
 	var/health = 0 //do not forget to set health for your bot!
 	var/maxhealth = 0
 	var/fire_dam_coeff = 1.0
 	var/brute_dam_coeff = 1.0
+	var/open = 0//Maint panel
+	var/locked = 1
 	//var/emagged = 0 //Urist: Moving that var to the general /bot tree as it's used by most bots
 
-
 /obj/machinery/bot/proc/turn_on()
-	if (stat)
-		return 0
-	src.on = 1
+	if(stat)	return 0
+	on = 1
+	set_light(initial(light_range))
 	return 1
 
 /obj/machinery/bot/proc/turn_off()
-	src.on = 0
+	on = 0
+	set_light(0)
 
 /obj/machinery/bot/proc/explode()
-	del(src)
+	qdel(src)
 
 /obj/machinery/bot/proc/healthcheck()
 	if (src.health <= 0)
 		src.explode()
 
-/obj/machinery/bot/proc/Emag(mob/user as mob)
-	if(!emagged) emagged = 1
+/obj/machinery/bot/emag_act(var/remaining_charges, var/user)
+	if(locked && !emagged)
+		locked = 0
+		emagged = 1
+		user << "<span class='warning'>You short out [src]'s maintenance hatch lock.</span>"
+		log_and_message_admins("emagged [src]'s maintenance hatch lock")
+		return 1
 
-/obj/machinery/bot/examine()
-	set src in view()
-	..()
+	if(!locked && open && emagged == 1)
+		emagged = 2
+		log_and_message_admins("emagged [src]'s inner circuits")
+		return 1
+
+/obj/machinery/bot/examine(mob/user)
+	..(user)
 	if (src.health < maxhealth)
 		if (src.health > maxhealth/3)
-			usr << text("\red [src]'s parts look loose.")
+			user << "<span class='warning'>[src]'s parts look loose.</span>"
 		else
-			usr << text("\red <B>[src]'s parts look very loose!</B>")
+			user << "<span class='danger'>[src]'s parts look very loose!</span>"
 	return
 
-/obj/machinery/bot/attack_alien(var/mob/living/carbon/alien/user as mob)
-	/* Well, aliums dislike machines and do not want to caress them.
-	if (user.a_intent == "help")
-		for(var/mob/O in viewers(src, null))
-			if ((O.client && !( O.blinded )))
-				O.show_message(text("\blue [user] caresses [src.name] with its scythe like arm."), 1)
-	else
-	*/
-	src.health -= rand(15,30)*brute_dam_coeff
-	src.visible_message("\red <B>[user] has slashed [src]!</B>")
-	playsound(src.loc, 'slice.ogg', 25, 1, -1)
-	if(prob(10))
-		new /obj/effect/decal/cleanable/oil(src.loc)
-	healthcheck()
-
-
-
 /obj/machinery/bot/attackby(obj/item/weapon/W as obj, mob/user as mob)
-	if (istype(W, /obj/item/weapon/screwdriver))
-		if (src.health < maxhealth)
-			src.health = min(maxhealth, src.health+25)
-			user.visible_message(
-				"\red [user] repairs [src]!",
-				"\blue You repair [src]!"
-			)
+	if(istype(W, /obj/item/weapon/screwdriver))
+		if(!locked)
+			open = !open
+			user << "<span class='notice'>Maintenance panel is now [src.open ? "opened" : "closed"].</span>"
+	else if(istype(W, /obj/item/weapon/weldingtool))
+		if(health < maxhealth)
+			if(open)
+				health = min(maxhealth, health+10)
+				user.visible_message("<span class='warning'>[user] repairs [src]!</span>","<span class='notice'>You repair [src]!</span>")
+				user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
+			else
+				user << "<span class='notice'>Unable to repair with the maintenance panel closed.</span>"
 		else
-			user << "\blue [src] does not need a repair!"
-	else if (istype(W, /obj/item/weapon/card/emag) && !emagged)
-		var/obj/item/weapon/card/emag/E = W
-		if(E.uses)
-			E.uses--
-		else
-			return
-		Emag(user)
+			user << "<span class='notice'>[src] does not need a repair.</span>"
 	else
-		switch(W.damtype)
-			if("fire")
-				src.health -= W.force * fire_dam_coeff
-			if("brute")
-				src.health -= W.force * brute_dam_coeff
-		..()
-		healthcheck()
+		if(hasvar(W,"force") && hasvar(W,"damtype"))
+			switch(W.damtype)
+				if("fire")
+					src.health -= W.force * fire_dam_coeff
+				if("brute")
+					src.health -= W.force * brute_dam_coeff
+			user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
+			..()
+			healthcheck()
+		else
+			..()
 
 /obj/machinery/bot/bullet_act(var/obj/item/projectile/Proj)
+	if(!(Proj.damage_type == BRUTE || Proj.damage_type == BURN))
+		return
 	health -= Proj.damage
 	..()
 	healthcheck()
-
-/obj/machinery/bot/meteorhit()
-	src.explode()
-	return
-
-/obj/machinery/bot/blob_act()
-	src.health -= rand(20,40)*fire_dam_coeff
-	healthcheck()
-	return
 
 /obj/machinery/bot/ex_act(severity)
 	switch(severity)
@@ -119,15 +110,15 @@
 /obj/machinery/bot/emp_act(severity)
 	var/was_on = on
 	stat |= EMPED
-	var/obj/effect/overlay/pulse2 = new/obj/effect/overlay ( src.loc )
-	pulse2.icon = 'effects.dmi'
+	var/obj/effect/overlay/pulse2 = PoolOrNew(/obj/effect/overlay, src.loc )
+	pulse2.icon = 'icons/effects/effects.dmi'
 	pulse2.icon_state = "empdisable"
 	pulse2.name = "emp sparks"
 	pulse2.anchored = 1
-	pulse2.dir = pick(cardinal)
+	pulse2.set_dir(pick(cardinal))
 
 	spawn(10)
-		del(pulse2)
+		qdel(pulse2)
 	if (on)
 		turn_off()
 	spawn(severity*300)
@@ -137,10 +128,20 @@
 
 
 /obj/machinery/bot/attack_ai(mob/user as mob)
-	if (src.on)
-		turn_off()
-	else
-		turn_on()
+	src.attack_hand(user)
+
+/obj/machinery/bot/attack_hand(var/mob/living/carbon/human/user)
+
+	if(!istype(user))
+		return ..()
+
+	if(user.species.can_shred(user))
+		src.health -= rand(15,30)*brute_dam_coeff
+		src.visible_message("<span class='danger'>[user] has slashed [src]!</span>")
+		playsound(src.loc, 'sound/weapons/slice.ogg', 25, 1, -1)
+		if(prob(10))
+			new /obj/effect/decal/cleanable/blood/oil(src.loc)
+		healthcheck()
 
 /******************************************************************/
 // Navigation procs

@@ -1,3 +1,5 @@
+//This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:33
+
 
 /* --- Traffic Control Scripting Language --- */
 	// Nanotrasen TCS Language - Made by Doohl
@@ -16,14 +18,13 @@
 	/* -- Compile a raw block of text -- */
 
 	proc/Compile(code as message)
-		var
-			n_scriptOptions/nS_Options/options = new()
-			n_Scanner/nS_Scanner/scanner       = new(code, options)
-			list/tokens                        = scanner.Scan()
-			n_Parser/nS_Parser/parser          = new(tokens, options)
-			node/BlockDefinition/GlobalBlock/program   	 = parser.Parse()
+		var/n_scriptOptions/nS_Options/options = new()
+		var/n_Scanner/nS_Scanner/scanner       = new(code, options)
+		var/list/tokens                        = scanner.Scan()
+		var/n_Parser/nS_Parser/parser          = new(tokens, options)
+		var/node/BlockDefinition/GlobalBlock/program   	 = parser.Parse()
 
-			list/returnerrors = list()
+		var/list/returnerrors = list()
 
 		returnerrors += scanner.errors
 		returnerrors += parser.errors
@@ -47,6 +48,8 @@
 		if(!interpreter)
 			return
 
+		interpreter.container = src
+
 		interpreter.SetVar("PI"		, 	3.141592653)	// value of pi
 		interpreter.SetVar("E" 		, 	2.718281828)	// value of e
 		interpreter.SetVar("SQURT2" , 	1.414213562)	// value of the square root of 2
@@ -59,14 +62,13 @@
 		interpreter.SetVar("WEST" 	, 	WEST)			// WEST  (8)
 
 		// Channel macros
-		interpreter.SetVar("$common",	1459)
-		interpreter.SetVar("$science",	1351)
-		interpreter.SetVar("$command",	1353)
-		interpreter.SetVar("$medical",	1355)
-		interpreter.SetVar("$engineering",1357)
-		interpreter.SetVar("$security",	1359)
-		interpreter.SetVar("$mining",	1349)
-		interpreter.SetVar("$cargo",	1347)
+		interpreter.SetVar("$common",	PUB_FREQ)
+		interpreter.SetVar("$science",	SCI_FREQ)
+		interpreter.SetVar("$command",	COMM_FREQ)
+		interpreter.SetVar("$medical",	MED_FREQ)
+		interpreter.SetVar("$engineering",ENG_FREQ)
+		interpreter.SetVar("$security",	SEC_FREQ)
+		interpreter.SetVar("$supply",	SUP_FREQ)
 
 		// Signal data
 
@@ -116,7 +118,7 @@
 					@param replacestring: 	the string to replace the substring with
 
 		*/
-		interpreter.SetProc("replace", /proc/dd_replacetext)
+		interpreter.SetProc("replace", /proc/string_replacetext)
 
 		/*
 			-> Locates an element/substring inside of a list or string
@@ -155,6 +157,25 @@
 		interpreter.SetProc("prob", /proc/prob_chance)
 		interpreter.SetProc("substr", /proc/docopytext)
 
+		// Donkie~
+		// Strings
+		interpreter.SetProc("lower", /proc/n_lower)
+		interpreter.SetProc("upper", /proc/n_upper)
+		interpreter.SetProc("explode", /proc/string_explode)
+		interpreter.SetProc("repeat", /proc/n_repeat)
+		interpreter.SetProc("reverse", /proc/n_reverse)
+		interpreter.SetProc("tonum", /proc/n_str2num)
+
+		// Numbers
+		interpreter.SetProc("tostring", /proc/n_num2str)
+		interpreter.SetProc("sqrt", /proc/n_sqrt)
+		interpreter.SetProc("abs", /proc/n_abs)
+		interpreter.SetProc("floor", /proc/n_floor)
+		interpreter.SetProc("ceil", /proc/n_ceil)
+		interpreter.SetProc("round", /proc/n_round)
+		interpreter.SetProc("clamp", /proc/n_clamp)
+		interpreter.SetProc("inrange", /proc/n_inrange)
+		// End of Donkie~
 
 
 		// Run the compiled code
@@ -163,7 +184,7 @@
 		// Backwards-apply variables onto signal data
 		/* sanitize EVERYTHING. fucking players can't be trusted with SHIT */
 
-		signal.data["message"] 	= trim(copytext(sanitize(interpreter.GetVar("$content")), 1, MAX_MESSAGE_LEN))
+		signal.data["message"] 	= interpreter.GetVar("$content")
 		signal.frequency 		= interpreter.GetVar("$freq")
 
 		var/setname = ""
@@ -171,13 +192,17 @@
 		if(interpreter.GetVar("$source") in S.stored_names)
 			setname = interpreter.GetVar("$source")
 		else
-			setname = "<i>[trim(copytext(sanitize(interpreter.GetVar("$source")), 1, MAX_MESSAGE_LEN))]</i>"
+			setname = "<i>[interpreter.GetVar("$source")]</i>"
 
 		if(signal.data["name"] != setname)
 			signal.data["realname"] = setname
 		signal.data["name"]		= setname
-		signal.data["job"]		= trim(copytext(sanitize(interpreter.GetVar("$job")), 1, MAX_MESSAGE_LEN))
+		signal.data["job"]		= interpreter.GetVar("$job")
 		signal.data["reject"]	= !(interpreter.GetVar("$pass")) // set reject to the opposite of $pass
+
+		// If the message is invalid, just don't broadcast it!
+		if(signal.data["message"] == "" || !signal.data["message"])
+			signal.data["reject"] = 1
 
 /*  -- Actual language proc code --  */
 
@@ -188,7 +213,7 @@ datum/signal
 		if(istext(address))
 			var/obj/machinery/telecomms/server/S = data["server"]
 
-			if(!value)
+			if(!value && value != 0)
 				return S.memory[address]
 
 			else
@@ -197,34 +222,37 @@ datum/signal
 
 	proc/tcombroadcast(var/message, var/freq, var/source, var/job)
 
-		var/mob/living/carbon/human/H = new
 		var/datum/signal/newsign = new
 		var/obj/machinery/telecomms/server/S = data["server"]
-		var/obj/item/device/radio/hradio
+		var/obj/item/device/radio/hradio = S.server_radio
 
-		if(!message)
+		if(!hradio)
+			error("[src] has no radio.")
+			return
+
+		if((!message || message == "") && message != 0)
 			message = "*beep*"
 		if(!source)
 			source = "[html_encode(uppertext(S.id))]"
 			hradio = new // sets the hradio as a radio intercom
 		if(!freq)
-			freq = 1459
+			freq = PUB_FREQ
 		if(findtext(num2text(freq), ".")) // if the frequency has been set as a decimal
 			freq *= 10 // shift the decimal one place
 
 		if(!job)
-			job = "None"
+			job = "?"
 
-		newsign.data["mob"] = H
-		newsign.data["mobtype"] = H.type
+		newsign.data["mob"] = null
+		newsign.data["mobtype"] = /mob/living/carbon/human
 		if(source in S.stored_names)
 			newsign.data["name"] = source
 		else
-			newsign.data["name"] = "<i>[html_encode(uppertext(source))]<i>"
+			newsign.data["name"] = "<i>[html_encode(uppertext(source))]</i>"
 		newsign.data["realname"] = newsign.data["name"]
-		newsign.data["job"] = html_encode(job)
+		newsign.data["job"] = job
 		newsign.data["compression"] = 0
-		newsign.data["message"] = html_encode(message)
+		newsign.data["message"] = message
 		newsign.data["type"] = 2 // artificial broadcast
 		if(!isnum(freq))
 			freq = text2num(freq)
@@ -233,13 +261,14 @@ datum/signal
 		var/datum/radio_frequency/connection = radio_controller.return_frequency(freq)
 		newsign.data["connection"] = connection
 
-		// The radio is a radio headset!
-
-		if(!hradio)
-			hradio = new /obj/item/device/radio/headset
 
 		newsign.data["radio"] = hradio
-		newsign.data["vmessage"] = H.voice_message
-		newsign.data["vname"] = H.voice_name
+		newsign.data["vmessage"] = message
+		newsign.data["vname"] = source
 		newsign.data["vmask"] = 0
-		S.relay_information(newsign, "/obj/machinery/telecomms/broadcaster") // send this simple message to broadcasters
+		newsign.data["level"] = list()
+
+		var/pass = S.relay_information(newsign, "/obj/machinery/telecomms/hub")
+		if(!pass)
+			S.relay_information(newsign, "/obj/machinery/telecomms/broadcaster") // send this simple message to broadcasters
+

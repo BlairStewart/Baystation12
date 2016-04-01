@@ -1,8 +1,21 @@
-/client/proc/cmd_modify_object_variables(obj/O as obj|mob|turf|area in world)
+var/list/forbidden_varedit_object_types = list(
+										/datum/admins,						//Admins editing their own admin-power object? Yup, sounds like a good idea.,
+										/obj/machinery/blackbox_recorder,	//Prevents people messing with feedback gathering,
+										/datum/feedback_variable				//Prevents people messing with feedback gathering
+									)
+
+var/list/VVlocked = list("vars", "holder", "client", "virus", "viruses", "cuffed", "last_eaten", "unlock_content", "bound_x", "bound_y", "step_x", "step_y", "force_ending")
+var/list/VVicon_edit_lock = list("icon", "icon_state", "overlays", "underlays")
+var/list/VVckey_edit = list("key", "ckey")
+
+/*
+/client/proc/cmd_modify_object_variables(obj/O as obj|mob|turf|area in world)   // Acceptable 'in world', as VV would be incredibly hampered otherwise
 	set category = "Debug"
 	set name = "Edit Variables"
 	set desc="(target) Edit a target item's variables"
 	src.modify_variables(O)
+	feedback_add_details("admin_verb","EDITV") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+*/
 
 /client/proc/cmd_modify_ticker_variables()
 	set category = "Debug"
@@ -12,6 +25,7 @@
 		src << "Game hasn't started yet."
 	else
 		src.modify_variables(ticker)
+		feedback_add_details("admin_verb","ETV") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /client/proc/mod_list_add_ass() //haha
 
@@ -43,23 +57,7 @@
 			var_value = input("Enter type:","Type") as null|anything in typesof(/obj,/mob,/area,/turf)
 
 		if("reference")
-			switch(alert("Would you like to enter a specific object, or search for it from the world?","Choose!","Specifc UID (Hexadecimal number)", "Search"))
-				if("Specifc UID (Hexadecimal number)")
-					var/UID = input("Type in UID, without the leading 0x","Type in UID") as text|null
-					if(!UID) return
-					if(length(UID) != 7)
-						usr << "ERROR.  UID must be 7 digits"
-					var/temp_variable = locate("\[0x[UID]\]")
-					if(!temp_variable)
-						usr << "ERROR.  Could not locate referenced object."
-						return
-					switch(alert("You have chosen [temp_variable], in [get_area(temp_variable)].  Are you sure?","You sure?","Yes","NONOCANCEL!"))
-						if("Yes")
-							var_value = temp_variable
-						if("NONOCANCEL!")
-							return
-				if("Search")
-					var_value = input("Select reference:","Reference") as null|mob|obj|turf|area in world
+			var_value = input("Select reference:","Reference") as null|mob|obj|turf|area in world
 
 		if("mob reference")
 			var_value = input("Select reference:","Reference") as null|mob in world
@@ -78,7 +76,7 @@
 	return var_value
 
 
-/client/proc/mod_list_add(var/list/L)
+/client/proc/mod_list_add(var/list/L, atom/O, original_name, objectvar)
 
 	var/class = "text"
 	if(src.holder && src.holder.marked_datum)
@@ -108,23 +106,7 @@
 			var_value = input("Enter type:","Type") in typesof(/obj,/mob,/area,/turf)
 
 		if("reference")
-			switch(alert("Would you like to enter a specific object, or search for it from the world?","Choose!","Specifc UID (Hexadecimal number)", "Search"))
-				if("Specifc UID (Hexadecimal number)")
-					var/UID = input("Type in UID, without the leading 0x","Type in UID") as text|null
-					if(!UID) return
-					if(length(UID) != 7)
-						usr << "ERROR.  UID must be 7 digits"
-					var/temp_variable = locate("\[0x[UID]\]")
-					if(!temp_variable)
-						usr << "ERROR.  Could not locate referenced object."
-						return
-					switch(alert("You have chosen [temp_variable], in [get_area(temp_variable)].  Are you sure?","You sure?","Yes","NONOCANCEL!"))
-						if("Yes")
-							var_value = temp_variable
-						if("NONOCANCEL!")
-							return
-				if("Search")
-					var_value = input("Select reference:","Reference") as null|mob|obj|turf|area in world
+			var_value = input("Select reference:","Reference") as mob|obj|turf|area in world
 
 		if("mob reference")
 			var_value = input("Select reference:","Reference") as mob in world
@@ -146,29 +128,58 @@
 			L[var_value] = mod_list_add_ass() //haha
 		if("No")
 			L += var_value
+	world.log << "### ListVarEdit by [src]: [O.type] [objectvar]: ADDED=[var_value]"
+	log_admin("[key_name(src)] modified [original_name]'s [objectvar]: ADDED=[var_value]")
+	message_admins("[key_name_admin(src)] modified [original_name]'s [objectvar]: ADDED=[var_value]")
 
-/client/proc/mod_list(var/list/L)
+/client/proc/mod_list(var/list/L, atom/O, original_name, objectvar)
+	if(!check_rights(R_VAREDIT))	return
 	if(!istype(L,/list)) src << "Not a List."
 
-	var/list/locked = list("vars", "key", "ckey", "client", "firemut", "ishulk", "telekinesis", "xray", "virus", "viruses", "cuffed", "ka", "last_eaten", "urine", "poo", "icon", "icon_state")
+	if(L.len > 1000)
+		var/confirm = alert(src, "The list you're trying to edit is very long, continuing may crash the server.", "Warning", "Continue", "Abort")
+		if(confirm != "Continue")
+			return
 
-	var/list/names = sortList(L)
+	var/assoc = 0
+	if(L.len > 0)
+		var/a = L[1]
+		if(istext(a) && L[a] != null)
+			assoc = 1 //This is pretty weak test but i can't think of anything else
+			usr << "List appears to be associative."
 
-	var/variable = input("Which var?","Var") as null|anything in names + "(ADD VAR)"
+	var/list/names = null
+	if(!assoc)
+		names = sortList(L)
+
+	var/variable
+	var/assoc_key
+	if(assoc)
+		variable = input("Which var?","Var") as null|anything in L + "(ADD VAR)"
+	else
+		variable = input("Which var?","Var") as null|anything in names + "(ADD VAR)"
 
 	if(variable == "(ADD VAR)")
-		mod_list_add(L)
+		mod_list_add(L, O, original_name, objectvar)
 		return
 
-	if(!variable)
+	if(assoc)
+		assoc_key = variable
+		variable = L[assoc_key]
+
+	if(!assoc && !variable || assoc && !assoc_key)
 		return
 
 	var/default
 
 	var/dir
 
-	if (locked.Find(variable) && !(src.holder.rank in list("Game Master", "Game Admin")))
-		return
+	if(variable in VVlocked)
+		if(!check_rights(R_DEBUG))	return
+	if(variable in VVckey_edit)
+		if(!check_rights(R_SPAWN|R_DEBUG)) return
+	if(variable in VVicon_edit_lock)
+		if(!check_rights(R_FUN|R_DEBUG)) return
 
 	if(isnull(variable))
 		usr << "Unable to determine variable type."
@@ -235,10 +246,10 @@
 	var/class = "text"
 	if(src.holder && src.holder.marked_datum)
 		class = input("What kind of variable?","Variable Type",default) as null|anything in list("text",
-			"num","type","reference","mob reference", "icon","file","list","edit referenced object","restore to default","marked datum ([holder.marked_datum.type])")
+			"num","type","reference","mob reference", "icon","file","list","edit referenced object","restore to default","marked datum ([holder.marked_datum.type])", "DELETE FROM LIST")
 	else
 		class = input("What kind of variable?","Variable Type",default) as null|anything in list("text",
-			"num","type","reference","mob reference", "icon","file","list","edit referenced object","restore to default")
+			"num","type","reference","mob reference", "icon","file","list","edit referenced object","restore to default", "DELETE FROM LIST")
 
 	if(!class)
 		return
@@ -246,72 +257,105 @@
 	if(holder.marked_datum && class == "marked datum ([holder.marked_datum.type])")
 		class = "marked datum"
 
-	switch(class)
+	var/original_var
+	if(assoc)
+		original_var = L[assoc_key]
+	else
+		original_var = L[L.Find(variable)]
+
+	var/new_var
+	switch(class) //Spits a runtime error if you try to modify an entry in the contents list. Dunno how to fix it, yet.
 
 		if("list")
-			mod_list(variable)
+			mod_list(variable, O, original_name, objectvar)
 
 		if("restore to default")
-			variable = initial(variable)
+			new_var = initial(variable)
+			if(assoc)
+				L[assoc_key] = new_var
+			else
+				L[L.Find(variable)] = new_var
 
 		if("edit referenced object")
 			modify_variables(variable)
 
-		if("(DELETE FROM LIST)")
+		if("DELETE FROM LIST")
+			world.log << "### ListVarEdit by [src]: [O.type] [objectvar]: REMOVED=[html_encode("[variable]")]"
+			log_admin("[key_name(src)] modified [original_name]'s [objectvar]: REMOVED=[variable]")
+			message_admins("[key_name_admin(src)] modified [original_name]'s [objectvar]: REMOVED=[variable]")
 			L -= variable
 			return
 
 		if("text")
-			variable = input("Enter new text:","Text",\
-				variable) as text
+			new_var = input("Enter new text:","Text") as text
+			if(assoc)
+				L[assoc_key] = new_var
+			else
+				L[L.Find(variable)] = new_var
 
 		if("num")
-			variable = input("Enter new number:","Num",\
-				variable) as num
+			new_var = input("Enter new number:","Num") as num
+			if(assoc)
+				L[assoc_key] = new_var
+			else
+				L[L.Find(variable)] = new_var
 
 		if("type")
-			variable = input("Enter type:","Type",variable) \
-				in typesof(/obj,/mob,/area,/turf)
+			new_var = input("Enter type:","Type") in typesof(/obj,/mob,/area,/turf)
+			if(assoc)
+				L[assoc_key] = new_var
+			else
+				L[L.Find(variable)] = new_var
 
 		if("reference")
-			switch(alert("Would you like to enter a specific object, or search for it from the world?","Choose!","Specifc UID (Hexadecimal number)", "Search"))
-				if("Specifc UID (Hexadecimal number)")
-					var/UID = input("Type in UID, without the leading 0x","Type in UID") as text|null
-					if(!UID) return
-					if(length(UID) != 7)
-						usr << "ERROR.  UID must be 7 digits"
-					var/temp_variable = locate("\[0x[UID]\]")
-					if(!temp_variable)
-						usr << "ERROR.  Could not locate referenced object."
-						return
-					switch(alert("You have chosen [temp_variable], in [get_area(temp_variable)].  Are you sure?","You sure?","Yes","NONOCANCEL!"))
-						if("Yes")
-							variable = temp_variable
-						if("NONOCANCEL!")
-							return
-				if("Search")
-					variable = input("Select reference:","Reference") as null|mob|obj|turf|area in world
+			new_var = input("Select reference:","Reference") as mob|obj|turf|area in world
+			if(assoc)
+				L[assoc_key] = new_var
+			else
+				L[L.Find(variable)] = new_var
 
 		if("mob reference")
-			variable = input("Select reference:","Reference",\
-				variable) as mob in world
+			new_var = input("Select reference:","Reference") as mob in world
+			if(assoc)
+				L[assoc_key] = new_var
+			else
+				L[L.Find(variable)] = new_var
 
 		if("file")
-			variable = input("Pick file:","File",variable) \
-				as file
+			new_var = input("Pick file:","File") as file
+			if(assoc)
+				L[assoc_key] = new_var
+			else
+				L[L.Find(variable)] = new_var
 
 		if("icon")
-			variable = input("Pick icon:","Icon",variable) \
-				as icon
+			new_var = input("Pick icon:","Icon") as icon
+			if(assoc)
+				L[assoc_key] = new_var
+			else
+				L[L.Find(variable)] = new_var
 
 		if("marked datum")
-			variable = holder.marked_datum
+			new_var = holder.marked_datum
+			if(assoc)
+				L[assoc_key] = new_var
+			else
+				L[L.Find(variable)] = new_var
+
+	world.log << "### ListVarEdit by [src]: [O.type] [objectvar]: [original_var]=[new_var]"
+	log_admin("[key_name(src)] modified [original_name]'s [objectvar]: [original_var]=[new_var]")
+	message_admins("[key_name_admin(src)] modified [original_name]'s varlist [objectvar]: [original_var]=[new_var]")
 
 /client/proc/modify_variables(var/atom/O, var/param_var_name = null, var/autodetect_class = 0)
-	var/list/locked = list("vars", "key", "ckey", "client", "firemut", "ishulk", "telekinesis", "xray", "virus", "cuffed", "ka", "last_eaten", "urine", "poo", "icon", "icon_state")
+	if(!check_rights(R_VAREDIT))	return
 
-	if(!src.holder)
-		src << "Only administrators may use this command."
+	for(var/p in forbidden_varedit_object_types)
+		if( istype(O,p) )
+			usr << "<span class='danger'>It is forbidden to edit this object's variables.</span>"
+			return
+
+	if(istype(O, /client) && (param_var_name == "ckey" || param_var_name == "key"))
+		usr << "<span class='danger'>You cannot edit ckeys on client objects.</span>"
 		return
 
 	var/class
@@ -323,13 +367,12 @@
 			src << "A variable with this name ([param_var_name]) doesn't exist in this atom ([O])"
 			return
 
-		if (param_var_name == "holder" && holder.rank != "Game Master")
-			src << "No. Stop being stupid."
-			return
-
-		if (locked.Find(param_var_name) && !(src.holder.rank in list("Game Master", "Game Admin")))
-			src << "Editing this variable requires you to be a game master or game admin."
-			return
+		if(param_var_name in VVlocked)
+			if(!check_rights(R_DEBUG))	return
+		if(param_var_name in VVckey_edit)
+			if(!check_rights(R_SPAWN|R_DEBUG)) return
+		if(param_var_name in VVicon_edit_lock)
+			if(!check_rights(R_FUN|R_DEBUG)) return
 
 		variable = param_var_name
 
@@ -383,15 +426,15 @@
 		names = sortList(names)
 
 		variable = input("Which var?","Var") as null|anything in names
-		if(!variable)
-			return
+		if(!variable)	return
 		var_value = O.vars[variable]
 
-		if (locked.Find(variable) && !(src.holder.rank in list("Game Master", "Game Admin")))
-			return
-
-		if (variable == "holder" && holder.rank != "Game Master") //Hotfix, a bit ugly but that exploit has been there for ages and now somebody just had to go and tell everyone of it bluh bluh - U
-			return
+		if(variable in VVlocked)
+			if(!check_rights(R_DEBUG)) return
+		if(variable in VVckey_edit)
+			if(!check_rights(R_SPAWN|R_DEBUG)) return
+		if(variable in VVicon_edit_lock)
+			if(!check_rights(R_FUN|R_DEBUG)) return
 
 	if(!autodetect_class)
 
@@ -481,7 +524,7 @@
 	switch(class)
 
 		if("list")
-			mod_list(O.vars[variable])
+			mod_list(O.vars[variable], O, original_name, variable)
 			return
 
 		if("restore to default")
@@ -496,10 +539,20 @@
 			O.vars[variable] = var_new
 
 		if("num")
-			if(variable=="luminosity")
+			if(variable=="light_range")
 				var/var_new = input("Enter new number:","Num",O.vars[variable]) as null|num
 				if(var_new == null) return
-				O.sd_SetLuminosity(var_new)
+				O.set_light(var_new)
+			else if(variable=="stat")
+				var/var_new = input("Enter new number:","Num",O.vars[variable]) as null|num
+				if(var_new == null) return
+				if((O.vars[variable] == 2) && (var_new < 2))//Bringing the dead back to life
+					dead_mob_list -= O
+					living_mob_list += O
+				if((O.vars[variable] < 2) && (var_new == 2))//Kill he
+					living_mob_list -= O
+					dead_mob_list += O
+				O.vars[variable] = var_new
 			else
 				var/var_new =  input("Enter new number:","Num",O.vars[variable]) as null|num
 				if(var_new==null) return
@@ -511,24 +564,7 @@
 			O.vars[variable] = var_new
 
 		if("reference")
-			var/var_new
-			switch(alert("Would you like to enter a specific object, or search for it from the world?","Choose!","Specifc UID (Hexadecimal number)", "Search"))
-				if("Specifc UID (Hexadecimal number)")
-					var/UID = input("Type in UID, without the leading 0x","Type in UID") as text|null
-					if(!UID) return
-					if(length(UID) != 7)
-						usr << "ERROR.  UID must be 7 digits"
-					var/temp_variable = locate("\[0x[UID]\]")
-					if(!temp_variable)
-						usr << "ERROR.  Could not locate referenced object."
-						return
-					switch(alert("You have chosen [temp_variable], in [get_area(temp_variable)].  Are you sure?","You sure?","Yes","NONOCANCEL!"))
-						if("Yes")
-							var_new = temp_variable
-						if("NONOCANCEL!")
-							return
-				if("Search")
-					var_new = input("Select reference:","Reference") as null|mob|obj|turf|area in world
+			var/var_new = input("Select reference:","Reference",O.vars[variable]) as null|mob|obj|turf|area in world
 			if(var_new==null) return
 			O.vars[variable] = var_new
 
@@ -550,6 +586,6 @@
 		if("marked datum")
 			O.vars[variable] = holder.marked_datum
 
+	world.log << "### VarEdit by [src]: [O.type] [variable]=[html_encode("[O.vars[variable]]")]"
 	log_admin("[key_name(src)] modified [original_name]'s [variable] to [O.vars[variable]]")
-	message_admins("[key_name_admin(src)] modified [original_name]'s [variable] to [O.vars[variable]]", 1)
-
+	message_admins("[key_name_admin(src)] modified [original_name]'s [variable] to [O.vars[variable]]")

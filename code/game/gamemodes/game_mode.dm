@@ -1,131 +1,295 @@
-/*
- * GAMEMODES (by Rastaf0)
- *
- * In the new mode system all special roles are fully supported.
- * You can have proper wizards/traitors/changelings/cultists during any mode.
- * Only two things really depends on gamemode:
- * 1. Starting roles, equipment and preparations
- * 2. Conditions of finishing the round.
- *
- */
-
+var/global/antag_add_failed // Used in antag type voting.
+var/global/list/additional_antag_types = list()
 
 /datum/game_mode
-	var
-		name = "invalid"
-		config_tag = null
-		intercept_hacked = 0
-		votable = 1
-		probability = 1
-		station_was_nuked = 0 //see nuclearbomb.dm and malfunction.dm
-		explosion_in_progress = 0 //sit back and relax
-		list/datum/mind/modePlayer = new
-		list/restricted_jobs = list()	// Jobs it doesn't make sense to be.  I.E chaplain or AI cultist
-		list/protected_jobs = list()	// Jobs that can't be tratiors because
-		required_players = 0
-		required_enemies = 0
-		recommended_enemies = 0
-		uplink_welcome
-		uplink_uses
-		uplink_items = {"Highly Visible and Dangerous Weapons;
-/obj/item/weapon/gun/projectile:6:Revolver;
-/obj/item/ammo_magazine/a357:2:Ammo-357;
-/obj/item/weapon/gun/energy/crossbow:5:Energy Crossbow;
-/obj/item/weapon/melee/energy/sword:4:Energy Sword;
-/obj/item/weapon/storage/box/syndicate:10:Syndicate Bundle;
-/obj/item/weapon/storage/emp_kit:4:5 EMP Grenades;
-Whitespace:Seperator;
-Stealthy and Inconspicuous Weapons;
-/obj/item/weapon/pen/sleepypen:3:Sleepy Pen;
-/obj/item/weapon/soap/syndie:1:Syndicate Soap;
-/obj/item/weapon/cartridge/syndicate:3:Detomatix PDA Cartridge;
-Whitespace:Seperator;
-Stealth and Camouflage Items;
-/obj/item/clothing/under/chameleon:4:Chameleon Jumpsuit, with armor.;
-/obj/item/clothing/shoes/syndigaloshes:2:No-Slip Syndicate Shoes;
-/obj/item/weapon/card/id/syndicate:3:Agent ID card;
-/obj/item/clothing/mask/gas/voice:4:Voice Changer;
-/obj/item/clothing/glasses/thermal:4:Thermal Imaging Glasses;
-/obj/item/device/chameleon:4:Chameleon-Projector;
-/obj/item/weapon/stamperaser:1:Stamp Remover;
-Whitespace:Seperator;
-Devices and Tools;
-/obj/item/weapon/card/emag:4:Cryptographic Sequencer (Limited uses, almost full access);
-/obj/item/device/hacktool:3:Hacktool (Slow, but stealthy.  Unlimited uses);
-/obj/item/weapon/storage/toolbox/syndicate:1:Fully Loaded Toolbox;
-/obj/item/device/encryptionkey/traitor:3:Traitor Radio Key;
-/obj/item/device/encryptionkey/binary:3:Binary Translator Key;
-/obj/item/weapon/storage/syndie_kit/space:3:Space Suit;
-/obj/item/weapon/aiModule/syndicate:7:Hacked AI Upload Module;
-/obj/item/weapon/plastique:2:C-4 (Destroys walls);
-/obj/item/weapon/syndie/c4explosive:4:Low Power Explosive Charge, with Detonator;
-/obj/item/device/powersink:5:Powersink (DANGER!);
-/obj/machinery/singularity_beacon/syndicate:7:Singularity Beacon (DANGER!);
-/obj/item/weapon/circuitboard/teleporter:20:Teleporter Circuit Board;
-Whitespace:Seperator;
-Implants;
-/obj/item/weapon/storage/syndie_kit/imp_freedom:3:Freedom Implant;
-/obj/item/weapon/storage/syndie_kit/imp_compress:5:Compressed Matter Implant;
-/obj/item/weapon/storage/syndie_kit/imp_explosive:6:Explosive Implant;
-/obj/item/weapon/storage/syndie_kit/imp_uplink:10:Uplink Implant (Contains 5 Telecrystals);
-Whitespace:Seperator;
-Badassery;
-/obj/item/toy/syndicateballoon:10:For showing that You Are The BOSS (Useless Balloon);
-Whitespace:Seperator;"}
+	var/name = "invalid"
+	var/round_description = "How did you even vote this in?"
+	var/extended_round_description = "This roundtype should not be spawned, let alone votable. Someone contact a developer and tell them the game's broken again."
+	var/config_tag = null
+	var/votable = 1
+	var/probability = 0
 
-// Items removed from above:
-/*
-/obj/item/weapon/syndie/c4explosive/heavy:7:High (!) Power Explosive Charge, with Detonator;
-/obj/item/weapon/cloaking_device:4:Cloaking Device;	//Replacing cloakers with thermals.	-Pete
-*/
+	var/required_players = 0                 // Minimum players for round to start if voted in.
+	var/required_enemies = 0                 // Minimum antagonists for round to start.
+	var/newscaster_announcements = null
+	var/end_on_antag_death = 0               // Round will end when all antagonists are dead.
+	var/ert_disabled = 0                     // ERT cannot be called.
+	var/deny_respawn = 0	                 // Disable respawn during this round.
 
-/datum/game_mode/proc/announce() //to be calles when round starts
-	world << "<B>Notice</B>: [src] did not define announce()"
+	var/list/disabled_jobs = list()           // Mostly used for Malf.  This check is performed in job_controller so it doesn't spawn a regular AI.
 
+	var/shuttle_delay = 1                    // Shuttle transit time is multiplied by this.
+	var/auto_recall_shuttle = 0              // Will the shuttle automatically be recalled?
+
+	var/list/antag_tags = list()             // Core antag templates to spawn.
+	var/list/antag_templates                 // Extra antagonist types to include.
+	var/round_autoantag = 0                  // Will this round attempt to periodically spawn more antagonists?
+	var/antag_scaling_coeff = 5              // Coefficient for scaling max antagonists to player count.
+	var/require_all_templates = 0            // Will only start if all templates are checked and can spawn.
+
+	var/station_was_nuked = 0                // See nuclearbomb.dm and malfunction.dm.
+	var/explosion_in_progress = 0            // Sit back and relax
+	var/waittime_l = 600                     // Lower bound on time before intercept arrives (in tenths of seconds)
+	var/waittime_h = 1800                    // Upper bound on time before intercept arrives (in tenths of seconds)
+
+	var/event_delay_mod_moderate             // Modifies the timing of random events.
+	var/event_delay_mod_major                // As above.
+
+/datum/game_mode/New()
+	..()
+	// Enforce some formatting.
+	// This will probably break something.
+	name = capitalize(lowertext(name))
+	config_tag = lowertext(config_tag)
+
+/datum/game_mode/Topic(href, href_list[])
+	if(..())
+		return
+	if(href_list["toggle"])
+		switch(href_list["toggle"])
+			if("respawn")
+				deny_respawn = !deny_respawn
+			if("ert")
+				ert_disabled = !ert_disabled
+				announce_ert_disabled()
+			if("shuttle_recall")
+				auto_recall_shuttle = !auto_recall_shuttle
+			if("autotraitor")
+				round_autoantag = !round_autoantag
+		message_admins("Admin [key_name_admin(usr)] toggled game mode option '[href_list["toggle"]]'.")
+	else if(href_list["set"])
+		var/choice = ""
+		switch(href_list["set"])
+			if("shuttle_delay")
+				choice = input("Enter a new shuttle delay multiplier") as num
+				if(!choice || choice < 1 || choice > 20)
+					return
+				shuttle_delay = choice
+			if("antag_scaling")
+				choice = input("Enter a new antagonist cap scaling coefficient.") as num
+				if(isnull(choice) || choice < 0 || choice > 100)
+					return
+				antag_scaling_coeff = choice
+			if("event_modifier_moderate")
+				choice = input("Enter a new moderate event time modifier.") as num
+				if(isnull(choice) || choice < 0 || choice > 100)
+					return
+				event_delay_mod_moderate = choice
+				refresh_event_modifiers()
+			if("event_modifier_severe")
+				choice = input("Enter a new moderate event time modifier.") as num
+				if(isnull(choice) || choice < 0 || choice > 100)
+					return
+				event_delay_mod_major = choice
+				refresh_event_modifiers()
+		message_admins("Admin [key_name_admin(usr)] set game mode option '[href_list["set"]]' to [choice].")
+	else if(href_list["debug_antag"])
+		if(href_list["debug_antag"] == "self")
+			usr.client.debug_variables(src)
+			return
+		var/datum/antagonist/antag = all_antag_types[href_list["debug_antag"]]
+		if(antag)
+			usr.client.debug_variables(antag)
+			message_admins("Admin [key_name_admin(usr)] is debugging the [antag.role_text] template.")
+	else if(href_list["remove_antag_type"])
+		if(antag_tags && (href_list["remove_antag_type"] in antag_tags))
+			usr << "Cannot remove core mode antag type."
+			return
+		var/datum/antagonist/antag = all_antag_types[href_list["remove_antag_type"]]
+		if(antag_templates && antag_templates.len && antag && (antag in antag_templates) && (antag.id in additional_antag_types))
+			antag_templates -= antag
+			additional_antag_types -= antag.id
+			message_admins("Admin [key_name_admin(usr)] removed [antag.role_text] template from game mode.")
+	else if(href_list["add_antag_type"])
+		var/choice = input("Which type do you wish to add?") as null|anything in all_antag_types
+		if(!choice)
+			return
+		var/datum/antagonist/antag = all_antag_types[choice]
+		if(antag)
+			if(!islist(ticker.mode.antag_templates))
+				ticker.mode.antag_templates = list()
+			ticker.mode.antag_templates |= antag
+			message_admins("Admin [key_name_admin(usr)] added [antag.role_text] template to game mode.")
+
+	// I am very sure there's a better way to do this, but I'm not sure what it might be. ~Z
+	spawn(1)
+		for(var/datum/admins/admin in world)
+			if(usr.client == admin.owner)
+				admin.show_game_mode(usr)
+				return
+
+/datum/game_mode/proc/announce() //to be called when round starts
+	world << "<B>The current game mode is [capitalize(name)]!</B>"
+	if(round_description) world << "[round_description]"
+	if(round_autoantag) world << "Antagonists will be added to the round automagically as needed."
+	if(antag_templates && antag_templates.len)
+		var/antag_summary = "<b>Possible antagonist types:</b> "
+		var/i = 1
+		for(var/datum/antagonist/antag in antag_templates)
+			if(i > 1)
+				if(i == antag_templates.len)
+					antag_summary += " and "
+				else
+					antag_summary += ", "
+			antag_summary += "[antag.role_text_plural]"
+			i++
+		antag_summary += "."
+		if(antag_templates.len > 1 && master_mode != "secret")
+			world << "[antag_summary]"
+		else
+			message_admins("[antag_summary]")
 
 ///can_start()
 ///Checks to see if the game can be setup and ran with the current number of players or whatnot.
-/datum/game_mode/proc/can_start()
+/datum/game_mode/proc/can_start(var/do_not_spawn)
 	var/playerC = 0
-	for(var/mob/new_player/player in world)
+	for(var/mob/new_player/player in player_list)
 		if((player.client)&&(player.ready))
 			playerC++
-	if(playerC >= required_players)
+
+	if(playerC < required_players)
+		return 0
+
+	if(!(antag_templates && antag_templates.len))
 		return 1
+
+	var/enemy_count = 0
+	if(antag_tags && antag_tags.len)
+		for(var/antag_tag in antag_tags)
+			var/datum/antagonist/antag = all_antag_types[antag_tag]
+			if(!antag)
+				continue
+			var/list/potential = list()
+			if(antag.flags & ANTAG_OVERRIDE_JOB)
+				potential = antag.pending_antagonists
+			else
+				potential = antag.candidates
+			if(islist(potential))
+				if(require_all_templates && potential.len < antag.initial_spawn_req)
+					return 0
+				enemy_count += potential.len
+				if(enemy_count >= required_enemies)
+					return 1
 	return 0
 
+/datum/game_mode/proc/refresh_event_modifiers()
+	if(event_delay_mod_moderate || event_delay_mod_major)
+		event_manager.report_at_round_end = 1
+		if(event_delay_mod_moderate)
+			var/datum/event_container/EModerate = event_manager.event_containers[EVENT_LEVEL_MODERATE]
+			EModerate.delay_modifier = event_delay_mod_moderate
+		if(event_delay_mod_moderate)
+			var/datum/event_container/EMajor = event_manager.event_containers[EVENT_LEVEL_MAJOR]
+			EMajor.delay_modifier = event_delay_mod_major
 
-///pre_setup()
-///Attempts to select players for special roles the mode might have.
 /datum/game_mode/proc/pre_setup()
-	return 1
+	for(var/datum/antagonist/antag in antag_templates)
+		antag.update_current_antag_max()
+		antag.build_candidate_list() //compile a list of all eligible candidates
 
+		//antag roles that replace jobs need to be assigned before the job controller hands out jobs.
+		if(antag.flags & ANTAG_OVERRIDE_JOB)
+			antag.attempt_spawn() //select antags to be spawned
 
 ///post_setup()
-///Everyone should now be on the station and have their normal gear.  This is the place to give the special roles extra things
 /datum/game_mode/proc/post_setup()
+
+	refresh_event_modifiers()
+
+	spawn (ROUNDSTART_LOGOUT_REPORT_TIME)
+		display_roundstart_logout_report()
+
+	spawn (rand(waittime_l, waittime_h))
+		send_intercept()
+		spawn(rand(100,150))
+			announce_ert_disabled()
+
+	//Assign all antag types for this game mode. Any players spawned as antags earlier should have been removed from the pending list, so no need to worry about those.
+	for(var/datum/antagonist/antag in antag_templates)
+		if(!(antag.flags & ANTAG_OVERRIDE_JOB))
+			antag.attempt_spawn() //select antags to be spawned
+		antag.finalize_spawn() //actually spawn antags
+
+	if(emergency_shuttle && auto_recall_shuttle)
+		emergency_shuttle.auto_recall = 1
+
 	feedback_set_details("round_start","[time2text(world.realtime)]")
 	if(ticker && ticker.mode)
 		feedback_set_details("game_mode","[ticker.mode]")
-	if(revdata)
-		feedback_set_details("revision","[revdata.revision]")
-	feedback_set_details("server_ip","[world.internet_address]")
+	feedback_set_details("server_ip","[world.internet_address]:[world.port]")
 	return 1
 
+/datum/game_mode/proc/fail_setup()
+	for(var/datum/antagonist/antag in antag_templates)
+		antag.reset_antag_selection()
 
-///process()
-///Called by the gameticker
-/datum/game_mode/proc/process()
-	return 0
+/datum/game_mode/proc/announce_ert_disabled()
+	if(!ert_disabled)
+		return
 
+	var/list/reasons = list(
+		"political instability",
+		"quantum fluctuations",
+		"hostile raiders",
+		"derelict station debris",
+		"REDACTED",
+		"ancient alien artillery",
+		"solar magnetic storms",
+		"sentient time-travelling killbots",
+		"gravitational anomalies",
+		"wormholes to another dimension",
+		"a telescience mishap",
+		"radiation flares",
+		"supermatter dust",
+		"leaks into a negative reality",
+		"antiparticle clouds",
+		"residual bluespace energy",
+		"suspected criminal operatives",
+		"malfunctioning von Neumann probe swarms",
+		"shadowy interlopers",
+		"a stranded Vox arkship",
+		"haywire IPC constructs",
+		"rogue Unathi exiles",
+		"artifacts of eldritch horror",
+		"a brain slug infestation",
+		"killer bugs that lay eggs in the husks of the living",
+		"a deserted transport carrying xenomorph specimens",
+		"an emissary for the gestalt requesting a security detail",
+		"a Tajaran slave rebellion",
+		"radical Skrellian transevolutionaries",
+		"classified security operations"
+		)
+	command_announcement.Announce("The presence of [pick(reasons)] in the region is tying up all available local emergency resources; emergency response teams cannot be called at this time, and post-evacuation recovery efforts will be substantially delayed.","Emergency Transmission")
 
-/datum/game_mode/proc/check_finished() //to be called by ticker
-	if(emergency_shuttle.location==2 || station_was_nuked)
+/datum/game_mode/proc/check_finished()
+	if(emergency_shuttle.returned() || station_was_nuked)
+		return 1
+	if(end_on_antag_death && antag_templates && antag_templates.len)
+		for(var/datum/antagonist/antag in antag_templates)
+			if(!antag.antags_are_dead())
+				return 0
+		if(config.continous_rounds)
+			emergency_shuttle.auto_recall = 0
+			return 0
 		return 1
 	return 0
 
+/datum/game_mode/proc/cleanup()	//This is called when the round has ended but not the game, if any cleanup would be necessary in that case.
+	return
 
 /datum/game_mode/proc/declare_completion()
+
+	var/is_antag_mode = (antag_templates && antag_templates.len)
+	check_victory()
+	if(is_antag_mode)
+		sleep(10)
+		for(var/datum/antagonist/antag in antag_templates)
+			sleep(10)
+			antag.check_victory()
+			antag.print_player_summary()
+		sleep(10)
+		print_ownerless_uplinks()
+
 	var/clients = 0
 	var/surviving_humans = 0
 	var/surviving_total = 0
@@ -140,15 +304,15 @@ Whitespace:Seperator;"}
 
 	var/list/area/escape_locations = list(/area/shuttle/escape/centcom, /area/shuttle/escape_pod1/centcom, /area/shuttle/escape_pod2/centcom, /area/shuttle/escape_pod3/centcom, /area/shuttle/escape_pod5/centcom)
 
-	for(var/mob/M in world)
+	for(var/mob/M in player_list)
 		if(M.client)
 			clients++
 			if(ishuman(M))
-				if(!M.stat)
+				if(M.stat != DEAD)
 					surviving_humans++
 					if(M.loc && M.loc.loc && M.loc.loc.type in escape_locations)
 						escaped_humans++
-			if(!M.stat)
+			if(M.stat != DEAD)
 				surviving_total++
 				if(M.loc && M.loc.loc && M.loc.loc.type in escape_locations)
 					escaped_total++
@@ -167,6 +331,14 @@ Whitespace:Seperator;"}
 
 			if(isobserver(M))
 				ghosts++
+
+	var/text = ""
+	if(surviving_total > 0)
+		text += "<br>There [surviving_total>1 ? "were <b>[surviving_total] survivors</b>" : "was <b>one survivor</b>"]"
+		text += " (<b>[escaped_total>0 ? escaped_total : "none"] [emergency_shuttle.evac ? "escaped" : "transferred"]</b>) and <b>[ghosts] ghosts</b>.<br>"
+	else
+		text += "There were <b>no survivors</b> (<b>[ghosts] ghosts</b>)."
+	world << text
 
 	if(clients > 0)
 		feedback_set("round_end_clients",clients)
@@ -191,161 +363,240 @@ Whitespace:Seperator;"}
 	if(escaped_on_pod_5 > 0)
 		feedback_set("escaped_on_pod_5",escaped_on_pod_5)
 
+	send2mainirc("A round of [src.name] has ended - [surviving_total] survivors, [ghosts] ghosts.")
 
 	return 0
-
 
 /datum/game_mode/proc/check_win() //universal trigger to be called at mob death, nuke explosion, etc. To be called from everywhere.
 	return 0
 
-/datum/game_mode/proc/latespawn(var/mob)
-
 /datum/game_mode/proc/send_intercept()
-	var/intercepttext = "<FONT size = 3><B>Cent. Com. Update</B> Requested staus information:</FONT><HR>"
-	intercepttext += "<B> Cent. Com has recently been contacted by the following syndicate affiliated organisations in your area, please investigate any information you may have:</B>"
 
-	var/list/possible_modes = list()
-	possible_modes.Add("revolution", "wizard", "nuke", "traitor", "malf", "changeling", "cult")
-	possible_modes -= "[ticker.mode]"
-	var/number = pick(2, 3)
-	var/i = 0
-	for(i = 0, i < number, i++)
-		possible_modes.Remove(pick(possible_modes))
+	var/intercepttext = "<FONT size = 3><B>Cent. Com. Update</B> Requested status information:</FONT><HR>"
+	intercepttext += "<B> In case you have misplaced your copy, attached is a list of personnel whom reliable sources&trade; suspect may be affiliated with subversive elements:</B><br>"
 
-	if(!intercept_hacked)
-		possible_modes.Insert(rand(possible_modes.len), "[ticker.mode]")
+	var/list/disregard_roles = list()
+	for(var/antag_type in all_antag_types)
+		var/datum/antagonist/antag = all_antag_types[antag_type]
+		if(antag.flags & ANTAG_SUSPICIOUS)
+			disregard_roles |= antag.role_text
 
-	shuffle(possible_modes)
+	var/list/suspects = list()
+	for(var/mob/living/carbon/human/man in player_list) if(man.client && man.mind)
 
-	var/datum/intercept_text/i_text = new /datum/intercept_text
-	for(var/A in possible_modes)
-		if(modePlayer.len == 0)
-			intercepttext += i_text.build(A)
-		else
-			intercepttext += i_text.build(A, pick(modePlayer))
+		// NT relation option
+		var/special_role = man.mind.special_role
+		var/datum/antagonist/special_role_data = get_antag_data(special_role)
 
-	for (var/obj/machinery/computer/communications/comm in world)
+		if (special_role in disregard_roles)
+			continue
+		else if(man.client.prefs.nanotrasen_relation == COMPANY_OPPOSED && prob(50) || \
+			man.client.prefs.nanotrasen_relation == COMPANY_SKEPTICAL && prob(20))
+			suspects += man
+		// Antags
+		else if(special_role_data && prob(special_role_data.suspicion_chance))
+			suspects += man
+
+		// Some poor people who were just in the wrong place at the wrong time..
+		else if(prob(10))
+			suspects += man
+
+	for(var/mob/M in suspects)
+		if(player_is_antag(M.mind, only_offstation_roles = 1))
+			continue
+		switch(rand(1, 100))
+			if(1 to 50)
+				intercepttext += "Someone with the job of <b>[M.mind.assigned_role]</b> <br>"
+			else
+				intercepttext += "<b>[M.name]</b>, the <b>[M.mind.assigned_role]</b> <br>"
+
+	for (var/obj/machinery/computer/communications/comm in machines)
 		if (!(comm.stat & (BROKEN | NOPOWER)) && comm.prints_intercept)
 			var/obj/item/weapon/paper/intercept = new /obj/item/weapon/paper( comm.loc )
-			intercept.name = "paper - 'Cent. Com. Status Summary'"
+			intercept.name = "Cent. Com. Status Summary"
 			intercept.info = intercepttext
 
 			comm.messagetitle.Add("Cent. Com. Status Summary")
 			comm.messagetext.Add(intercepttext)
+	world << sound('sound/AI/commandreport.ogg')
 
-	command_alert("Summary downloaded and printed out at all communications consoles.", "Enemy communication intercept. Security Level Elevated.")
-	world << sound('intercept.ogg')
-	if(security_level < SEC_LEVEL_BLUE)
-		set_security_level(SEC_LEVEL_BLUE)
-
-
-/datum/game_mode/proc/get_players_for_role(var/role, override_jobbans=1)
+/datum/game_mode/proc/get_players_for_role(var/role, var/antag_id)
+	var/list/players = list()
 	var/list/candidates = list()
-	var/list/drafted = list()
-	var/datum/mind/applicant = null
 
-	var/roletext
-	switch(role)
-		if(BE_CHANGELING)	roletext="changeling"
-		if(BE_TRAITOR)		roletext="traitor"
-		if(BE_OPERATIVE)	roletext="operative"
-		if(BE_WIZARD)		roletext="wizard"
-		if(BE_REV)			roletext="revolutionary"
-		if(BE_CULTIST)		roletext="cultist"
+	var/datum/antagonist/antag_template = all_antag_types[antag_id]
+	if(!antag_template)
+		return candidates
 
+	// If this is being called post-roundstart then it doesn't care about ready status.
+	if(ticker && ticker.current_state == GAME_STATE_PLAYING)
+		for(var/mob/player in player_list)
+			if(!player.client)
+				continue
+			if(istype(player, /mob/new_player))
+				continue
+			if(!role || (role in player.client.prefs.be_special_role))
+				log_debug("[player.key] had [antag_id] enabled, so we are drafting them.")
+				candidates |= player.mind
+	else
+		// Assemble a list of active players without jobbans.
+		for(var/mob/new_player/player in player_list)
+			if( player.client && player.ready )
+				players += player
 
-	for(var/mob/new_player/player in world)
-		if(player.client && player.ready)
-			if(player.preferences.be_special & role)
-				if(!jobban_isbanned(player, "Syndicate") && !jobban_isbanned(player, roletext)) //Nodrak/Carn: Antag Job-bans
-					candidates += player.mind				// Get a list of all the people who want to be the antagonist for this round
+		// Get a list of all the people who want to be the antagonist for this round
+		for(var/mob/new_player/player in players)
+			if(!role || (role in player.client.prefs.be_special_role))
+				log_debug("[player.key] had [antag_id] enabled, so we are drafting them.")
+				candidates += player.mind
+				players -= player
 
-	if(restricted_jobs)
-		for(var/datum/mind/player in candidates)
-			for(var/job in restricted_jobs)					// Remove people who want to be antagonist but have a job already that precludes it
-				if(player.assigned_role == job)
-					candidates -= player
+		// If we don't have enough antags, draft people who voted for the round.
+		if(candidates.len < required_enemies)
+			for(var/mob/new_player/player in players)
+				if(player.ckey in round_voters)
+					log_debug("[player.key] voted for this round, so we are drafting them.")
+					candidates += player.mind
+					players -= player
+					break
 
-	if(candidates.len < recommended_enemies)
-		for(var/mob/new_player/player in world)
-			if (player.client && player.ready)
-				if(!(player.preferences.be_special & role)) // We don't have enough people who want to be antagonist, make a seperate list of people who don't want to be one
-					if(!jobban_isbanned(player, "Syndicate") && !jobban_isbanned(player, roletext)) //Nodrak/Carn: Antag Job-bans
-						drafted += player.mind
-
-	if(restricted_jobs)
-		for(var/datum/mind/player in drafted)				// Remove people who can't be an antagonist
-			for(var/job in restricted_jobs)
-				if(player.assigned_role == job)
-					drafted -= player
-
-	while(candidates.len < recommended_enemies)				// Pick randomlly just the number of people we need and add them to our list of candidates
-		if(drafted.len > 0)
-			applicant = pick(drafted)
-			if(applicant)
-				candidates += applicant
-				drafted.Remove(applicant)
-
-		else												// Not enough scrubs, ABORT ABORT ABORT
-			break
-
-	if(candidates.len < recommended_enemies && override_jobbans) //If we still don't have enough people, we're going to start drafting banned people.
-		for(var/mob/new_player/player in world)
-			if (player.client && player.ready)
-				if(jobban_isbanned(player, "Syndicate") || jobban_isbanned(player, roletext)) //Nodrak/Carn: Antag Job-bans
-					drafted += player.mind
-
-	if(restricted_jobs)
-		for(var/datum/mind/player in drafted)				// Remove people who can't be an antagonist
-			for(var/job in restricted_jobs)
-				if(player.assigned_role == job)
-					drafted -= player
-
-	while(candidates.len < recommended_enemies)				// Pick randomlly just the number of people we need and add them to our list of candidates
-		if(drafted.len > 0)
-			applicant = pick(drafted)
-			if(applicant)
-				candidates += applicant
-				drafted.Remove(applicant)
-
-		else												// Not enough scrubs, ABORT ABORT ABORT
-			break
-
-	return candidates		// Returns: The number of people who had the antagonist role set to yes, regardless of recomended_enemies, if that number is greater than recommended_enemies
-							//			recommended_enemies if the number of people with that role set to yes is less than recomended_enemies,
-							//			Less if there are not enough valid players in the game entirely to make recommended_enemies.
-
-
-/datum/game_mode/proc/check_player_role_pref(var/role, var/mob/new_player/player)
-	if(player.preferences.be_special & role)
-		return 1
-	return 0
-
+	return candidates		// Returns: The number of people who had the antagonist role set to yes, regardless of recomended_enemies, if that number is greater than required_enemies
+							//			required_enemies if the number of people with that role set to yes is less than recomended_enemies,
+							//			Less if there are not enough valid players in the game entirely to make required_enemies.
 
 /datum/game_mode/proc/num_players()
 	. = 0
-	for(var/mob/new_player/P in world)
+	for(var/mob/new_player/P in player_list)
 		if(P.client && P.ready)
 			. ++
 
+/datum/game_mode/proc/check_antagonists_topic(href, href_list[])
+	return 0
 
-///////////////////////////////////
-//Keeps track of all living heads//
-///////////////////////////////////
-/datum/game_mode/proc/get_living_heads()
-	var/list/heads = list()
-	for(var/mob/living/carbon/human/player in world)
-		if(player.stat!=2 && player.mind && (player.mind.assigned_role in command_positions))
-			heads += player.mind
-	return heads
+/datum/game_mode/proc/create_antagonists()
 
+	if(!config.traitor_scaling)
+		antag_scaling_coeff = 0
 
-////////////////////////////
-//Keeps track of all heads//
-////////////////////////////
-/datum/game_mode/proc/get_all_heads()
-	var/list/heads = list()
-	for(var/mob/player in world)
-		if(player.mind && (player.mind.assigned_role in command_positions))
-			heads += player.mind
-	return heads
+	if(antag_tags && antag_tags.len)
+		antag_templates = list()
+		for(var/antag_tag in antag_tags)
+			var/datum/antagonist/antag = all_antag_types[antag_tag]
+			if(antag)
+				antag_templates |= antag
+
+	if(additional_antag_types && additional_antag_types.len)
+		if(!antag_templates)
+			antag_templates = list()
+		for(var/antag_type in additional_antag_types)
+			var/datum/antagonist/antag = all_antag_types[antag_type]
+			if(antag)
+				antag_templates |= antag
+
+	shuffle(antag_templates) //In the case of multiple antag types
+	newscaster_announcements = pick(newscaster_standard_feeds)
+
+/datum/game_mode/proc/check_victory()
+	return
+
+//////////////////////////
+//Reports player logouts//
+//////////////////////////
+proc/display_roundstart_logout_report()
+	var/msg = "<span class='notice'><b>Roundstart logout report</b>\n\n"
+	for(var/mob/living/L in mob_list)
+
+		if(L.ckey)
+			var/found = 0
+			for(var/client/C in clients)
+				if(C.ckey == L.ckey)
+					found = 1
+					break
+			if(!found)
+				msg += "<b>[L.name]</b> ([L.ckey]), the [L.job] (<font color='#ffcc00'><b>Disconnected</b></font>)\n"
+
+		if(L.ckey && L.client)
+			if(L.client.inactivity >= (ROUNDSTART_LOGOUT_REPORT_TIME / 2))	//Connected, but inactive (alt+tabbed or something)
+				msg += "<b>[L.name]</b> ([L.ckey]), the [L.job] (<font color='#ffcc00'><b>Connected, Inactive</b></font>)\n"
+				continue //AFK client
+			if(L.stat)
+				if(L.stat == UNCONSCIOUS)
+					msg += "<b>[L.name]</b> ([L.ckey]), the [L.job] (Dying)\n"
+					continue //Unconscious
+				if(L.stat == DEAD)
+					msg += "<b>[L.name]</b> ([L.ckey]), the [L.job] (Dead)\n"
+					continue //Dead
+
+			continue //Happy connected client
+		for(var/mob/dead/observer/D in mob_list)
+			if(D.mind && (D.mind.original == L || D.mind.current == L))
+				if(L.stat == DEAD)
+					msg += "<b>[L.name]</b> ([ckey(D.mind.key)]), the [L.job] (Dead)\n"
+					continue //Dead mob, ghost abandoned
+				else
+					if(D.can_reenter_corpse)
+						msg += "<b>[L.name]</b> ([ckey(D.mind.key)]), the [L.job] (<font color='red'><b>Adminghosted</b></font>)\n"
+						continue //Lolwhat
+					else
+						msg += "<b>[L.name]</b> ([ckey(D.mind.key)]), the [L.job] (<font color='red'><b>Ghosted</b></font>)\n"
+						continue //Ghosted while alive
+
+	msg += "</span>" // close the span from right at the top
+
+	for(var/mob/M in mob_list)
+		if(M.client && M.client.holder)
+			M << msg
+
+proc/get_nt_opposed()
+	var/list/dudes = list()
+	for(var/mob/living/carbon/human/man in player_list)
+		if(man.client)
+			if(man.client.prefs.nanotrasen_relation == COMPANY_OPPOSED)
+				dudes += man
+			else if(man.client.prefs.nanotrasen_relation == COMPANY_SKEPTICAL && prob(50))
+				dudes += man
+	if(dudes.len == 0) return null
+	return pick(dudes)
+
+//Announces objectives/generic antag text.
+/proc/show_generic_antag_text(var/datum/mind/player)
+	if(player.current)
+		player.current << \
+		"You are an antagonist! <font color=blue>Within the rules,</font> \
+		try to act as an opposing force to the crew. Further RP and try to make sure \
+		other players have <i>fun</i>! If you are confused or at a loss, always adminhelp, \
+		and before taking extreme actions, please try to also contact the administration! \
+		Think through your actions and make the roleplay immersive! <b>Please remember all \
+		rules aside from those without explicit exceptions apply to antagonists.</b>"
+
+/proc/show_objectives(var/datum/mind/player)
+
+	if(!player || !player.current) return
+
+	if(config.objectives_disabled)
+		show_generic_antag_text(player)
+		return
+
+	var/obj_count = 1
+	player.current << "<span class='notice'>Your current objectives:</span>"
+	for(var/datum/objective/objective in player.objectives)
+		player.current << "<B>Objective #[obj_count]</B>: [objective.explanation_text]"
+		obj_count++
+
+/mob/verb/check_round_info()
+	set name = "Check Round Info"
+	set category = "OOC"
+
+	if(!ticker || !ticker.mode)
+		usr << "Something is terribly wrong; there is no gametype."
+		return
+
+	if(master_mode != "secret")
+		usr << "<b>The roundtype is [capitalize(ticker.mode.name)]</b>"
+		if(ticker.mode.round_description)
+			usr << "<i>[ticker.mode.round_description]</i>"
+		if(ticker.mode.extended_round_description)
+			usr << "[ticker.mode.extended_round_description]"
+	else
+		usr << "<i>Shhhh</i>. It's a secret."
+	return

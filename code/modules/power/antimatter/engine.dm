@@ -1,8 +1,8 @@
 /obj/machinery/power/am_engine
-	icon = 'AM_Engine.dmi'
+	icon = 'icons/am_engine.dmi'
 	density = 1
 	anchored = 1.0
-	flags = 512.0
+	flags = ON_BORDER
 
 /obj/machinery/power/am_engine/bits
 	name = "Antimatter Engine"
@@ -47,7 +47,7 @@
 		user << "You insert the rod into the injector"
 		injecting = 1
 		var/fuel = F.fuel
-		del(F)
+		qdel(F)
 		spawn( 300 )
 			injecting = 0
 			new/obj/item/weapon/fuel(src.loc)
@@ -60,7 +60,7 @@
 		user << "You insert the rod into the injector"
 		injecting = 1
 		var/fuel = F.fuel
-		del(F)
+		qdel(F)
 		spawn( 300 )
 			injecting = 0
 			new /obj/item/weapon/fuel(src.loc)

@@ -1,22 +1,24 @@
+//This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:32
+
 
 
 
 
 /obj/machinery/computer/telecomms/traffic
 	name = "Telecommunications Traffic Control"
-	icon_state = "computer_generic"
+	icon_screen = "generic"
 
-	var
-		screen = 0				// the screen number:
-		list/servers = list()	// the servers located by the computer
-		mob/editingcode
-		list/viewingcode = list()
-		obj/machinery/telecomms/server/SelectedServer
+	var/screen = 0				// the screen number:
+	var/list/servers = list()	// the servers located by the computer
+	var/mob/editingcode
+	var/mob/lasteditor
+	var/list/viewingcode = list()
+	var/obj/machinery/telecomms/server/SelectedServer
 
-		network = "NULL"		// the network to probe
-		temp = ""				// temporary feedback messages
+	var/network = "NULL"		// the network to probe
+	var/temp = ""				// temporary feedback messages
 
-		storedcode = ""			// code stored
+	var/storedcode = ""			// code stored
 
 
 	proc/update_ide()
@@ -34,7 +36,7 @@
 				winset(editingcode, "tcscode", "is-disabled=false")
 
 			// If the player's not manning the keyboard anymore, adjust everything
-			if(!(editingcode in range(1, src)) || editingcode.machine != src)
+			if( (!(editingcode in range(1, src)) && !issilicon(editingcode)) || (editingcode.machine != src && !issilicon(editingcode)))
 				if(editingcode)
 					winshow(editingcode, "Telecomms IDE", 0) // hide the window!
 				editingcode = null
@@ -45,17 +47,17 @@
 
 			if(length(viewingcode))
 				// This piece of code is very important - it escapes quotation marks so string aren't cut off by the input element
-				var/showcode = dd_replacetext(storedcode, "\\\"", "\\\\\"")
-				showcode = dd_replacetext(storedcode, "\"", "\\\"")
+				var/showcode = replacetext(storedcode, "\\\"", "\\\\\"")
+				showcode = replacetext(storedcode, "\"", "\\\"")
 
 				for(var/mob/M in viewingcode)
-					if(M.machine == src && M in view(1, src))
+
+					if( (M.machine == src && M in view(1, src) ) || issilicon(M))
 						winset(M, "tcscode", "is-disabled=true")
 						winset(M, "tcscode", "text=\"[showcode]\"")
 					else
-						if(!issilicon(M))
-							viewingcode.Remove(M)
-							winshow(M, "Telecomms IDE", 0) // hide the window!
+						viewingcode.Remove(M)
+						winshow(M, "Telecomms IDE", 0) // hide the window!
 
 			sleep(5)
 
@@ -71,7 +73,7 @@
 	attack_hand(mob/user as mob)
 		if(stat & (BROKEN|NOPOWER))
 			return
-		user.machine = src
+		user.set_machine(src)
 		var/dat = "<TITLE>Telecommunication Traffic Control</TITLE><center><b>Telecommunications Traffic Control</b></center>"
 
 		switch(screen)
@@ -121,9 +123,9 @@
 
 
 		add_fingerprint(usr)
-		usr.machine = src
+		usr.set_machine(src)
 		if(!src.allowed(usr) && !emagged)
-			usr << "\red ACCESS DENIED."
+			usr << "<span class='warning'>ACCESS DENIED.</span>"
 			return
 
 		if(href_list["viewserver"])
@@ -145,7 +147,7 @@
 
 				if("scan")
 					if(servers.len > 0)
-						temp = "<font color = #D70B00>- FAILED: CANNOT PROBE WHEN BUFFER FULL -</font color>"
+						temp = "<font color = #D70B00>- FAILED: CANNOT PROBE WHEN BUFFER FULL -</font>"
 
 					else
 						for(var/obj/machinery/telecomms/server/T in range(25, src))
@@ -153,9 +155,9 @@
 								servers.Add(T)
 
 						if(!servers.len)
-							temp = "<font color = #D70B00>- FAILED: UNABLE TO LOCATE SERVERS IN \[[network]\] -</font color>"
+							temp = "<font color = #D70B00>- FAILED: UNABLE TO LOCATE SERVERS IN \[[network]\] -</font>"
 						else
-							temp = "<font color = #336699>- [servers.len] SERVERS PROBED & BUFFERED -</font color>"
+							temp = "<font color = #336699>- [servers.len] SERVERS PROBED & BUFFERED -</font>"
 
 						screen = 0
 
@@ -164,11 +166,13 @@
 					if(usr in viewingcode) return
 
 					if(!editingcode)
+						lasteditor = usr
 						editingcode = usr
 						winshow(editingcode, "Telecomms IDE", 1) // show the IDE
 						winset(editingcode, "tcscode", "is-disabled=false")
-						var/showcode = dd_replacetext(storedcode, "\\\"", "\\\\\"")
-						showcode = dd_replacetext(storedcode, "\"", "\\\"")
+						winset(editingcode, "tcscode", "text=\"\"")
+						var/showcode = replacetext(storedcode, "\\\"", "\\\\\"")
+						showcode = replacetext(storedcode, "\"", "\\\"")
 						winset(editingcode, "tcscode", "text=\"[showcode]\"")
 						spawn()
 							update_ide()
@@ -177,7 +181,8 @@
 						viewingcode.Add(usr)
 						winshow(usr, "Telecomms IDE", 1) // show the IDE
 						winset(usr, "tcscode", "is-disabled=true")
-						var/showcode = dd_replacetext(storedcode, "\"", "\\\"")
+						winset(editingcode, "tcscode", "text=\"\"")
+						var/showcode = replacetext(storedcode, "\"", "\\\"")
 						winset(usr, "tcscode", "text=\"[showcode]\"")
 
 				if("togglerun")
@@ -187,50 +192,54 @@
 
 			var/newnet = input(usr, "Which network do you want to view?", "Comm Monitor", network) as null|text
 
-			if(newnet && usr in range(1, src))
+			if(newnet && ((usr in range(1, src) || issilicon(usr))))
 				if(length(newnet) > 15)
-					temp = "<font color = #D70B00>- FAILED: NETWORK TAG STRING TOO LENGHTLY -</font color>"
+					temp = "<font color = #D70B00>- FAILED: NETWORK TAG STRING TOO LENGHTLY -</font>"
 
 				else
 
 					network = newnet
 					screen = 0
-					machines = list()
-					temp = "<font color = #336699>- NEW NETWORK TAG SET IN ADDRESS \[[network]\] -</font color>"
+					servers = list()
+					temp = "<font color = #336699>- NEW NETWORK TAG SET IN ADDRESS \[[network]\] -</font>"
 
 		updateUsrDialog()
 		return
 
 	attackby(var/obj/item/weapon/D as obj, var/mob/user as mob)
 		if(istype(D, /obj/item/weapon/screwdriver))
-			playsound(src.loc, 'Screwdriver.ogg', 50, 1)
+			playsound(src.loc, 'sound/items/Screwdriver.ogg', 50, 1)
 			if(do_after(user, 20))
 				if (src.stat & BROKEN)
-					user << "\blue The broken glass falls out."
+					user << "<span class='notice'>The broken glass falls out.</span>"
 					var/obj/structure/computerframe/A = new /obj/structure/computerframe( src.loc )
-					new /obj/item/weapon/shard( src.loc )
-					var/obj/item/weapon/circuitboard/comm_server/M = new /obj/item/weapon/circuitboard/comm_server( A )
+					new /obj/item/weapon/material/shard( src.loc )
+					var/obj/item/weapon/circuitboard/comm_traffic/M = new /obj/item/weapon/circuitboard/comm_traffic( A )
 					for (var/obj/C in src)
 						C.loc = src.loc
 					A.circuit = M
 					A.state = 3
 					A.icon_state = "3"
 					A.anchored = 1
-					del(src)
+					qdel(src)
 				else
-					user << "\blue You disconnect the monitor."
+					user << "<span class='notice'>You disconnect the monitor.</span>"
 					var/obj/structure/computerframe/A = new /obj/structure/computerframe( src.loc )
-					var/obj/item/weapon/circuitboard/comm_server/M = new /obj/item/weapon/circuitboard/comm_server( A )
+					var/obj/item/weapon/circuitboard/comm_traffic/M = new /obj/item/weapon/circuitboard/comm_traffic( A )
 					for (var/obj/C in src)
 						C.loc = src.loc
 					A.circuit = M
 					A.state = 4
 					A.icon_state = "4"
 					A.anchored = 1
-					del(src)
-		else if(istype(D, /obj/item/weapon/card/emag) && !emagged)
-			playsound(src.loc, 'sparks4.ogg', 75, 1)
-			emagged = 1
-			user << "\blue You you disable the security protocols"
+					qdel(src)
 		src.updateUsrDialog()
 		return
+
+/obj/machinery/computer/telecomms/traffic/emag_act(var/remaining_charges, var/mob/user)
+	if(!emagged)
+		playsound(src.loc, 'sound/effects/sparks4.ogg', 75, 1)
+		emagged = 1
+		user << "<span class='notice'>You you disable the security protocols</span>"
+		src.updateUsrDialog()
+		return 1

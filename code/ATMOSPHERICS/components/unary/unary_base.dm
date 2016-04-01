@@ -1,6 +1,7 @@
 /obj/machinery/atmospherics/unary
 	dir = SOUTH
 	initialize_directions = SOUTH
+	//layer = TURF_LAYER+0.1
 
 	var/datum/gas_mixture/air_contents
 
@@ -27,12 +28,12 @@
 
 		return null
 
-	Del()
+	Destroy()
 		loc = null
 
 		if(node)
 			node.disconnect(src)
-			del(network)
+			qdel(network)
 
 		node = null
 
@@ -45,10 +46,12 @@
 
 		for(var/obj/machinery/atmospherics/target in get_step(src,node_connect))
 			if(target.initialize_directions & get_dir(target,src))
-				node = target
-				break
+				if (check_connect_types(target,src))
+					node = target
+					break
 
 		update_icon()
+		update_underlays()
 
 	build_network()
 		if(!network && node)
@@ -81,7 +84,10 @@
 
 	disconnect(obj/machinery/atmospherics/reference)
 		if(reference==node)
-			del(network)
+			qdel(network)
 			node = null
+
+		update_icon()
+		update_underlays()
 
 		return null

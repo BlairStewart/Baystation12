@@ -1,120 +1,179 @@
-/proc/playsound(var/atom/source, soundin, vol as num, vary, extrarange as num)
-	//Frequency stuff only works with 45kbps oggs.
+//Sound environment defines. Reverb preset for sounds played in an area, see sound datum reference for more.
+#define GENERIC 0
+#define PADDED_CELL 1
+#define ROOM 2
+#define BATHROOM 3
+#define LIVINGROOM 4
+#define STONEROOM 5
+#define AUDITORIUM 6
+#define CONCERT_HALL 7
+#define CAVE 8
+#define ARENA 9
+#define HANGAR 10
+#define CARPETED_HALLWAY 11
+#define HALLWAY 12
+#define STONE_CORRIDOR 13
+#define ALLEY 14
+#define FOREST 15
+#define CITY 16
+#define MOUNTAINS 17
+#define QUARRY 18
+#define PLAIN 19
+#define PARKING_LOT 20
+#define SEWER_PIPE 21
+#define UNDERWATER 22
+#define DRUGGED 23
+#define DIZZY 24
+#define PSYCHOTIC 25
 
-	switch(soundin)
-		if ("shatter") soundin = pick('Glassbr1.ogg','Glassbr2.ogg','Glassbr3.ogg')
-		if ("explosion") soundin = pick('Explosion1.ogg','Explosion2.ogg')
-		if ("sparks") soundin = pick('sparks1.ogg','sparks2.ogg','sparks3.ogg','sparks4.ogg')
-		if ("rustle") soundin = pick('rustle1.ogg','rustle2.ogg','rustle3.ogg','rustle4.ogg','rustle5.ogg')
-		if ("punch") soundin = pick('punch1.ogg','punch2.ogg','punch3.ogg','punch4.ogg')
-		if ("clownstep") soundin = pick('clownstep1.ogg','clownstep2.ogg')
-		if ("swing_hit") soundin = pick('genhit1.ogg', 'genhit2.ogg', 'genhit3.ogg')
-		if ("hiss") soundin = pick('hiss1.ogg','hiss2.ogg','hiss3.ogg','hiss4.ogg')
-		if ("pageturn") soundin = pick('pageturn1.ogg', 'pageturn2.ogg','pageturn3.ogg')
+#define STANDARD_STATION STONEROOM
+#define LARGE_ENCLOSED HANGAR
+#define SMALL_ENCLOSED BATHROOM
+#define TUNNEL_ENCLOSED CAVE
+#define LARGE_SOFTFLOOR CARPETED_HALLWAY
+#define MEDIUM_SOFTFLOOR LIVINGROOM
+#define SMALL_SOFTFLOOR ROOM
+#define ASTEROID CAVE
+#define SPACE UNDERWATER
 
-	var/sound/S = sound(soundin)
-	S.wait = 0 //No queue
-	S.channel = 0 //Any channel
-	S.volume = vol
+var/list/shatter_sound = list('sound/effects/Glassbr1.ogg','sound/effects/Glassbr2.ogg','sound/effects/Glassbr3.ogg')
+var/list/explosion_sound = list('sound/effects/Explosion1.ogg','sound/effects/Explosion2.ogg')
+var/list/spark_sound = list('sound/effects/sparks1.ogg','sound/effects/sparks2.ogg','sound/effects/sparks3.ogg','sound/effects/sparks4.ogg')
+var/list/rustle_sound = list('sound/effects/rustle1.ogg','sound/effects/rustle2.ogg','sound/effects/rustle3.ogg','sound/effects/rustle4.ogg','sound/effects/rustle5.ogg')
+var/list/punch_sound = list('sound/weapons/punch1.ogg','sound/weapons/punch2.ogg','sound/weapons/punch3.ogg','sound/weapons/punch4.ogg')
+var/list/clown_sound = list('sound/effects/clownstep1.ogg','sound/effects/clownstep2.ogg')
+var/list/swing_hit_sound = list('sound/weapons/genhit1.ogg', 'sound/weapons/genhit2.ogg', 'sound/weapons/genhit3.ogg')
+var/list/hiss_sound = list('sound/voice/hiss1.ogg','sound/voice/hiss2.ogg','sound/voice/hiss3.ogg','sound/voice/hiss4.ogg')
+var/list/page_sound = list('sound/effects/pageturn1.ogg', 'sound/effects/pageturn2.ogg','sound/effects/pageturn3.ogg')
+//var/list/gun_sound = list('sound/weapons/Gunshot.ogg', 'sound/weapons/Gunshot2.ogg','sound/weapons/Gunshot3.ogg','sound/weapons/Gunshot4.ogg')
 
-	if (vary)
-		S.frequency = rand(32000, 55000)
-	for (var/mob/M in range(world.view+extrarange, source))       // Plays for people in range.
-		if (M.client)
-			if(M.ear_deaf <= 0 || !M.ear_deaf)
-				if(isturf(source))
-					var/dx = source.x - M.x
-					S.pan = max(-100, min(100, dx/8.0 * 100))
+/proc/playsound(var/atom/source, soundin, vol as num, vary, extrarange as num, falloff, var/is_global)
 
-				M << S
+	soundin = get_sfx(soundin) // same sound for everyone
 
-	for(var/obj/structure/closet/L in range(world.view+extrarange, source))
-		if(locate(/mob/, L))
-			for(var/mob/M in L)
-				if (M.client)
-					if(M.ear_deaf <= 0 || !M.ear_deaf)
-						if(isturf(source))
-							var/dx = source.x - M.x
-							S.pan = max(-100, min(100, dx/8.0 * 100))
+	if(isarea(source))
+		error("[source] is an area and is trying to make the sound: [soundin]")
+		return
 
-						M << S
-																		// Now plays for people in lockers!  -- Polymorph
+	var/frequency = get_rand_frequency() // Same frequency for everybody
+	var/turf/turf_source = get_turf(source)
 
-/mob/proc/playsound_local(var/atom/source, soundin, vol as num, vary, extrarange as num)
+ 	// Looping through the player list has the added bonus of working for mobs inside containers
+	for (var/P in player_list)
+		var/mob/M = P
+		if(!M || !M.client)
+			continue
+
+		var/distance = get_dist(M, turf_source)
+		if(distance <= (world.view + extrarange) * 3)
+			var/turf/T = get_turf(M)
+
+			if(T && T.z == turf_source.z)
+				M.playsound_local(turf_source, soundin, vol, vary, frequency, falloff, is_global)
+
+var/const/FALLOFF_SOUNDS = 0.5
+
+/mob/proc/playsound_local(var/turf/turf_source, soundin, vol as num, vary, frequency, falloff, is_global)
 	if(!src.client || ear_deaf > 0)	return
-	switch(soundin)
-		if ("shatter") soundin = pick('Glassbr1.ogg','Glassbr2.ogg','Glassbr3.ogg')
-		if ("explosion") soundin = pick('Explosion1.ogg','Explosion2.ogg')
-		if ("sparks") soundin = pick('sparks1.ogg','sparks2.ogg','sparks3.ogg','sparks4.ogg')
-		if ("rustle") soundin = pick('rustle1.ogg','rustle2.ogg','rustle3.ogg','rustle4.ogg','rustle5.ogg')
-		if ("punch") soundin = pick('punch1.ogg','punch2.ogg','punch3.ogg','punch4.ogg')
-		if ("clownstep") soundin = pick('clownstep1.ogg','clownstep2.ogg')
-		if ("swing_hit") soundin = pick('genhit1.ogg', 'genhit2.ogg', 'genhit3.ogg')
-		if ("hiss") soundin = pick('hiss1.ogg','hiss2.ogg','hiss3.ogg','hiss4.ogg')
+	soundin = get_sfx(soundin)
 
 	var/sound/S = sound(soundin)
 	S.wait = 0 //No queue
 	S.channel = 0 //Any channel
 	S.volume = vol
-
+	S.environment = -1
 	if (vary)
-		S.frequency = rand(32000, 55000)
-	if(isturf(source))
-		var/dx = source.x - src.x
-		S.pan = max(-100, min(100, dx/8.0 * 100))
+		if(frequency)
+			S.frequency = frequency
+		else
+			S.frequency = get_rand_frequency()
+
+	//sound volume falloff with pressure
+	var/pressure_factor = 1.0
+
+	if(isturf(turf_source))
+		// 3D sounds, the technology is here!
+		var/turf/T = get_turf(src)
+
+		//sound volume falloff with distance
+		var/distance = get_dist(T, turf_source)
+
+		S.volume -= max(distance - world.view, 0) * 2 //multiplicative falloff to add on top of natural audio falloff.
+
+		var/datum/gas_mixture/hearer_env = T.return_air()
+		var/datum/gas_mixture/source_env = turf_source.return_air()
+
+		if (hearer_env && source_env)
+			var/pressure = min(hearer_env.return_pressure(), source_env.return_pressure())
+
+			if (pressure < ONE_ATMOSPHERE)
+				pressure_factor = max((pressure - SOUND_MINIMUM_PRESSURE)/(ONE_ATMOSPHERE - SOUND_MINIMUM_PRESSURE), 0)
+		else //in space
+			pressure_factor = 0
+
+		if (distance <= 1)
+			pressure_factor = max(pressure_factor, 0.15)	//hearing through contact
+
+		S.volume *= pressure_factor
+
+		if (S.volume <= 0)
+			return	//no volume means no sound
+
+		var/dx = turf_source.x - T.x // Hearing from the right/left
+		S.x = dx
+		var/dz = turf_source.y - T.y // Hearing from infront/behind
+		S.z = dz
+		// The y value is for above your head, but there is no ceiling in 2d spessmens.
+		S.y = 1
+		S.falloff = (falloff ? falloff : FALLOFF_SOUNDS)
+
+	if(!is_global)
+
+		if(istype(src,/mob/living/))
+			var/mob/living/M = src
+			if (M.hallucination)
+				S.environment = PSYCHOTIC
+			else if (M.druggy)
+				S.environment = DRUGGED
+			else if (M.drowsyness)
+				S.environment = DIZZY
+			else if (M.confused)
+				S.environment = DIZZY
+			else if (M.sleeping)
+				S.environment = UNDERWATER
+			else if (pressure_factor < 0.5)
+				S.environment = SPACE
+			else
+				var/area/A = get_area(src)
+				S.environment = A.sound_env
+
+		else if (pressure_factor < 0.5)
+			S.environment = SPACE
+		else
+			var/area/A = get_area(src)
+			S.environment = A.sound_env
 
 	src << S
 
-client/verb/Toggle_Soundscape() //All new ambience should be added here so it works with this verb until someone better at things comes up with a fix that isn't awful
-	set category = "Special Verbs"
-	set name = "Toggle Ambience"
-	usr:client:no_ambi = !usr:client:no_ambi
-	if(usr:client:no_ambi)
-		usr << sound(pick('shipambience.ogg','ambigen1.ogg','ambigen3.ogg','ambigen4.ogg','ambigen5.ogg','ambigen6.ogg','ambigen7.ogg','ambigen8.ogg','ambigen9.ogg','ambigen10.ogg','ambigen11.ogg','ambigen12.ogg','ambigen14.ogg','ambicha1.ogg','ambicha2.ogg','ambicha3.ogg','ambicha4.ogg','ambimalf.ogg','ambispace.ogg','ambimine.ogg','title2.ogg'), repeat = 0, wait = 0, volume = 0, channel = 2)
-	else
-		usr << sound(pick('shipambience.ogg','ambigen1.ogg','ambigen3.ogg','ambigen4.ogg','ambigen5.ogg','ambigen6.ogg','ambigen7.ogg','ambigen8.ogg','ambigen9.ogg','ambigen10.ogg','ambigen11.ogg','ambigen12.ogg','ambigen14.ogg','ambicha1.ogg','ambicha2.ogg','ambicha3.ogg','ambicha4.ogg','ambimalf.ogg','ambispace.ogg','ambimine.ogg','title2.ogg'), repeat = 1, wait = 0, volume = 35, channel = 2)
-	usr << "Toggled ambience sound."
-	return
+/client/proc/playtitlemusic()
+	if(!ticker || !ticker.login_music)	return
+	if(prefs.toggles & SOUND_LOBBY)
+		src << sound(ticker.login_music, repeat = 0, wait = 0, volume = 85, channel = 1) // MAD JAMS
 
+/proc/get_rand_frequency()
+	return rand(32000, 55000) //Frequency stuff only works with 45kbps oggs.
 
-/area/Entered(A)
-	var/sound = null
-	var/musVolume = 25
-	sound = 'ambigen1.ogg'
-
-	if (ismob(A))
-
-		if (istype(A, /mob/dead/observer)) return
-		if (!A:client) return
-		//if (A:ear_deaf) return
-
-		if (A && A:client && !A:client:ambience_playing && !A:client:no_ambi) // Ambience goes down here -- make sure to list each area seperately for ease of adding things in later, thanks! Note: areas next to each other should have the same sounds to prevent cutoff when possible.- LastyScratch
-			A:client:ambience_playing = 1
-			A << sound('shipambience.ogg', repeat = 1, wait = 0, volume = 35, channel = 2)
-
-		switch(src.name)
-			if ("Chapel") sound = pick('ambicha1.ogg','ambicha2.ogg','ambicha3.ogg','ambicha4.ogg')
-			if ("Morgue") sound = pick('ambimo1.ogg','ambimo2.ogg','title2.ogg')
-			if ("Space") sound = pick('ambispace.ogg','title2.ogg',)
-			if ("Engine Control") sound = pick('ambisin1.ogg','ambisin2.ogg','ambisin3.ogg','ambisin4.ogg')
-			if ("Atmospherics") sound = pick('ambiatm1.ogg')
-			if ("AI Sat Ext") sound = pick('ambiruntime.ogg','ambimalf.ogg')
-			if ("AI Satellite") sound = pick('ambimalf.ogg')
-			if ("AI Satellite Teleporter Room") sound = pick('ambiruntime.ogg','ambimalf.ogg')
-			if ("Bar") sound = pick('null.ogg')
-			if ("AI Upload Foyer") sound = pick('ambimalf.ogg', 'null.ogg')
-			if ("AI Upload Chamber") sound = pick('ambimalf.ogg','null.ogg')
-			if ("Mine")
-				sound = pick('ambimine.ogg')
-				musVolume = 25
-			else
-				sound = pick('ambiruntime.ogg','ambigen1.ogg','ambigen3.ogg','ambigen4.ogg','ambigen5.ogg','ambigen6.ogg','ambigen7.ogg','ambigen8.ogg','ambigen9.ogg','ambigen10.ogg','ambigen11.ogg','ambigen12.ogg','ambigen14.ogg')
-
-
-		if (prob(35))
-			if(A && A:client && !A:client:played)
-				A << sound(sound, repeat = 0, wait = 0, volume = musVolume, channel = 1)
-				A:client:played = 1
-				spawn(600)
-					if(A && A:client)
-						A:client:played = 0
+/proc/get_sfx(soundin)
+	if(istext(soundin))
+		switch(soundin)
+			if ("shatter") soundin = pick(shatter_sound)
+			if ("explosion") soundin = pick(explosion_sound)
+			if ("sparks") soundin = pick(spark_sound)
+			if ("rustle") soundin = pick(rustle_sound)
+			if ("punch") soundin = pick(punch_sound)
+			if ("clownstep") soundin = pick(clown_sound)
+			if ("swing_hit") soundin = pick(swing_hit_sound)
+			if ("hiss") soundin = pick(hiss_sound)
+			if ("pageturn") soundin = pick(page_sound)
+			//if ("gunshot") soundin = pick(gun_sound)
+	return soundin

@@ -1,6 +1,5 @@
 /obj/mecha/combat
-	var/force = 30
-	var/damtype = "brute"
+	force = 30
 	var/melee_cooldown = 10
 	var/melee_can_hit = 1
 	var/list/destroyable_obj = list(/obj/mecha, /obj/structure/window, /obj/structure/grille, /turf/simulated/wall)
@@ -26,8 +25,8 @@
 	if(!melee_can_hit || !istype(target, /atom)) return
 	if(istype(target, /mob/living))
 		var/mob/living/M = target
-		if(src.occupant.a_intent == "hurt")
-			playsound(src, 'punch4.ogg', 50, 1)
+		if(src.occupant.a_intent == I_HURT)
+			playsound(src, 'sound/weapons/punch4.ogg', 50, 1)
 			if(damtype == "brute")
 				step_away(M,src,15)
 			/*
@@ -42,14 +41,15 @@
 				var/mob/living/carbon/human/H = target
 	//			if (M.health <= 0) return
 
-				var/datum/organ/external/temp = H.get_organ(pick("chest", "chest", "chest", "head"))
+				var/obj/item/organ/external/temp = H.get_organ(pick("chest", "chest", "chest", "head"))
 				if(temp)
+					var/update = 0
 					switch(damtype)
 						if("brute")
 							H.Paralyse(1)
-							temp.take_damage(rand(force/2, force), 0)
+							update |= temp.take_damage(rand(force/2, force), 0)
 						if("fire")
-							temp.take_damage(0, rand(force/2, force))
+							update |= temp.take_damage(0, rand(force/2, force))
 						if("tox")
 							if(H.reagents)
 								if(H.reagents.get_reagent_amount("carpotoxin") + force < force*2)
@@ -58,7 +58,7 @@
 									H.reagents.add_reagent("cryptobiolin", force)
 						else
 							return
-					H.UpdateDamageIcon()
+					if(update)	H.UpdateDamageIcon()
 				H.updatehealth()
 
 			else
@@ -99,9 +99,9 @@
 						target:attackby(src,src.occupant)
 					else if(prob(5))
 						target:dismantle_wall(1)
-						src.occupant_message("\blue You smash through the wall.")
+						src.occupant_message("<span class='notice'>You smash through the wall.</span>")
 						src.visible_message("<b>[src.name] smashes through the wall</b>")
-						playsound(src, 'smash.ogg', 50, 1)
+						playsound(src, 'sound/weapons/smash.ogg', 50, 1)
 					melee_can_hit = 0
 					if(do_after(melee_cooldown))
 						melee_can_hit = 1
@@ -243,15 +243,6 @@
 		return 1
 	else
 		return 0
-
-/obj/mecha/combat/mmi_moved_inside(var/obj/item/device/mmi/mmi_as_oc as obj,mob/user as mob)
-	if(..())
-		if(occupant.client)
-			occupant.client.mouse_pointer_icon = file("icons/mecha/mecha_mouse.dmi")
-		return 1
-	else
-		return 0
-
 
 /obj/mecha/combat/go_out()
 	if(src.occupant && src.occupant.client)

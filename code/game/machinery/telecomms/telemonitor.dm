@@ -1,3 +1,5 @@
+//This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:32
+
 
 /*
 	Telecomms monitor tracks the overall trafficing of a telecommunications network
@@ -7,21 +9,20 @@
 
 /obj/machinery/computer/telecomms/monitor
 	name = "Telecommunications Monitor"
-	icon_state = "comm_monitor"
+	icon_screen = "comm_monitor"
 
-	var
-		screen = 0				// the screen number:
-		list/machines = list()	// the machines located by the computer
-		var/obj/machinery/telecomms/SelectedMachine
+	var/screen = 0				// the screen number:
+	var/list/machinelist = list()	// the machines located by the computer
+	var/obj/machinery/telecomms/SelectedMachine
 
-		network = "NULL"		// the network to probe
+	var/network = "NULL"		// the network to probe
 
-		temp = ""				// temporary feedback messages
+	var/temp = ""				// temporary feedback messages
 
 	attack_hand(mob/user as mob)
 		if(stat & (BROKEN|NOPOWER))
 			return
-		user.machine = src
+		user.set_machine(src)
 		var/dat = "<TITLE>Telecommunications Monitor</TITLE><center><b>Telecommunications Monitor</b></center>"
 
 		switch(screen)
@@ -32,9 +33,9 @@
 			if(0)
 				dat += "<br>[temp]<br><br>"
 				dat += "<br>Current Network: <a href='?src=\ref[src];network=1'>[network]</a><br>"
-				if(machines.len)
+				if(machinelist.len)
 					dat += "<br>Detected Network Entities:<ul>"
-					for(var/obj/machinery/telecomms/T in machines)
+					for(var/obj/machinery/telecomms/T in machinelist)
 						dat += "<li><a href='?src=\ref[src];viewmachine=[T.id]'>\ref[T] [T.name]</a> ([T.id])</li>"
 					dat += "</ul>"
 					dat += "<br><a href='?src=\ref[src];operation=release'>\[Flush Buffer\]</a>"
@@ -51,7 +52,8 @@
 				dat += "Selected Network Entity: [SelectedMachine.name] ([SelectedMachine.id])<br>"
 				dat += "Linked Entities: <ol>"
 				for(var/obj/machinery/telecomms/T in SelectedMachine.links)
-					dat += "<li><a href='?src=\ref[src];viewmachine=[T.id]'>\ref[T.id] [T.name]</a> ([T.id])</li>"
+					if(!T.hide)
+						dat += "<li><a href='?src=\ref[src];viewmachine=[T.id]'>\ref[T.id] [T.name]</a> ([T.id])</li>"
 				dat += "</ol>"
 
 
@@ -69,11 +71,11 @@
 
 
 		add_fingerprint(usr)
-		usr.machine = src
+		usr.set_machine(src)
 
 		if(href_list["viewmachine"])
 			screen = 1
-			for(var/obj/machinery/telecomms/T in machines)
+			for(var/obj/machinery/telecomms/T in machinelist)
 				if(T.id == href_list["viewmachine"])
 					SelectedMachine = T
 					break
@@ -82,25 +84,25 @@
 			switch(href_list["operation"])
 
 				if("release")
-					machines = list()
+					machinelist = list()
 					screen = 0
 
 				if("mainmenu")
 					screen = 0
 
 				if("probe")
-					if(machines.len > 0)
-						temp = "<font color = #D70B00>- FAILED: CANNOT PROBE WHEN BUFFER FULL -</font color>"
+					if(machinelist.len > 0)
+						temp = "<font color = #D70B00>- FAILED: CANNOT PROBE WHEN BUFFER FULL -</font>"
 
 					else
 						for(var/obj/machinery/telecomms/T in range(25, src))
 							if(T.network == network)
-								machines.Add(T)
+								machinelist.Add(T)
 
-						if(!machines.len)
-							temp = "<font color = #D70B00>- FAILED: UNABLE TO LOCATE NETWORK ENTITIES IN \[[network]\] -</font color>"
+						if(!machinelist.len)
+							temp = "<font color = #D70B00>- FAILED: UNABLE TO LOCATE NETWORK ENTITIES IN \[[network]\] -</font>"
 						else
-							temp = "<font color = #336699>- [machines.len] ENTITIES LOCATED & BUFFERED -</font color>"
+							temp = "<font color = #336699>- [machinelist.len] ENTITIES LOCATED & BUFFERED -</font>"
 
 						screen = 0
 
@@ -108,27 +110,27 @@
 		if(href_list["network"])
 
 			var/newnet = input(usr, "Which network do you want to view?", "Comm Monitor", network) as null|text
-			if(newnet && usr in range(1, src))
+			if(newnet && ((usr in range(1, src) || issilicon(usr))))
 				if(length(newnet) > 15)
-					temp = "<font color = #D70B00>- FAILED: NETWORK TAG STRING TOO LENGHTLY -</font color>"
+					temp = "<font color = #D70B00>- FAILED: NETWORK TAG STRING TOO LENGHTLY -</font>"
 
 				else
 					network = newnet
 					screen = 0
-					machines = list()
-					temp = "<font color = #336699>- NEW NETWORK TAG SET IN ADDRESS \[[network]\] -</font color>"
+					machinelist = list()
+					temp = "<font color = #336699>- NEW NETWORK TAG SET IN ADDRESS \[[network]\] -</font>"
 
 		updateUsrDialog()
 		return
 
 	attackby(var/obj/item/weapon/D as obj, var/mob/user as mob)
 		if(istype(D, /obj/item/weapon/screwdriver))
-			playsound(src.loc, 'Screwdriver.ogg', 50, 1)
+			playsound(src.loc, 'sound/items/Screwdriver.ogg', 50, 1)
 			if(do_after(user, 20))
 				if (src.stat & BROKEN)
-					user << "\blue The broken glass falls out."
+					user << "<span class='notice'>The broken glass falls out.</span>"
 					var/obj/structure/computerframe/A = new /obj/structure/computerframe( src.loc )
-					new /obj/item/weapon/shard( src.loc )
+					new /obj/item/weapon/material/shard( src.loc )
 					var/obj/item/weapon/circuitboard/comm_monitor/M = new /obj/item/weapon/circuitboard/comm_monitor( A )
 					for (var/obj/C in src)
 						C.loc = src.loc
@@ -136,9 +138,9 @@
 					A.state = 3
 					A.icon_state = "3"
 					A.anchored = 1
-					del(src)
+					qdel(src)
 				else
-					user << "\blue You disconnect the monitor."
+					user << "<span class='notice'>You disconnect the monitor.</span>"
 					var/obj/structure/computerframe/A = new /obj/structure/computerframe( src.loc )
 					var/obj/item/weapon/circuitboard/comm_monitor/M = new /obj/item/weapon/circuitboard/comm_monitor( A )
 					for (var/obj/C in src)
@@ -147,10 +149,14 @@
 					A.state = 4
 					A.icon_state = "4"
 					A.anchored = 1
-					del(src)
-		else if(istype(D, /obj/item/weapon/card/emag) && !emagged)
-			playsound(src.loc, 'sparks4.ogg', 75, 1)
-			emagged = 1
-			user << "\blue You you disable the security protocols"
+					qdel(src)
 		src.updateUsrDialog()
 		return
+
+/obj/machinery/computer/telecomms/monitor/emag_act(var/remaining_charges, var/mob/user)
+	if(!emagged)
+		playsound(src.loc, 'sound/effects/sparks4.ogg', 75, 1)
+		emagged = 1
+		user << "<span class='notice'>You you disable the security protocols</span>"
+		src.updateUsrDialog()
+		return 1

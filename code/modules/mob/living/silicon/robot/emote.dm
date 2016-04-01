@@ -5,7 +5,27 @@
 		param = copytext(act, t1 + 1, length(act) + 1)
 		act = copytext(act, 1, t1)
 
+	if(findtext(act,"s",-1) && !findtext(act,"_",-2))//Removes ending s's unless they are prefixed with a '_'
+		act = copytext(act,1,length(act))
+
 	switch(act)
+		if ("me")
+			if (src.client)
+				if(client.prefs.muted & MUTE_IC)
+					src << "You cannot send IC messages (muted)."
+					return
+				if (src.client.handle_spam_prevention(message,MUTE_IC))
+					return
+			if (stat)
+				return
+			if(!(message))
+				return
+			else
+				return custom_emote(m_type, message)
+
+		if ("custom")
+			return custom_emote(m_type, message)
+
 		if ("salute")
 			if (!src.buckled)
 				var/M = null
@@ -18,9 +38,9 @@
 					param = null
 
 				if (param)
-					message = "<B>[src]</B> salutes to [param]."
+					message = "salutes to [param]."
 				else
-					message = "<B>[src]</b> salutes."
+					message = "salutes."
 			m_type = 1
 		if ("bow")
 			if (!src.buckled)
@@ -34,54 +54,39 @@
 					param = null
 
 				if (param)
-					message = "<B>[src]</B> bows to [param]."
+					message = "bows to [param]."
 				else
-					message = "<B>[src]</B> bows."
+					message = "bows."
 			m_type = 1
 
 		if ("clap")
 			if (!src.restrained())
-				message = "<B>[src]</B> claps."
+				message = "claps."
 				m_type = 2
 		if ("flap")
 			if (!src.restrained())
-				message = "<B>[src]</B> flaps his wings."
+				message = "flaps its wings."
 				m_type = 2
 
 		if ("aflap")
 			if (!src.restrained())
-				message = "<B>[src]</B> flaps his wings ANGRILY!"
+				message = "flaps its wings ANGRILY!"
 				m_type = 2
-
-		if ("custom")
-			var/input = input("Choose an emote to display.") as text|null
-			if (!input)
-				return
-			input = sanitize(input)
-			var/input2 = input("Is this a visible or hearable emote?") in list("Visible","Hearable")
-			if (input2 == "Visible")
-				m_type = 1
-			else if (input2 == "Hearable")
-				m_type = 2
-			else
-				alert("Unable to use this emote, must be either hearable or visible.")
-				return
-			message = "<B>[src]</B> [input]"
 
 		if ("twitch")
-			message = "<B>[src]</B> twitches violently."
+			message = "twitches violently."
 			m_type = 1
 
 		if ("twitch_s")
-			message = "<B>[src]</B> twitches."
+			message = "twitches."
 			m_type = 1
 
 		if ("nod")
-			message = "<B>[src]</B> nods."
+			message = "nods."
 			m_type = 1
 
 		if ("deathgasp")
-			message = "<B>[src]</B> shudders violently for a moment, then becomes motionless, its eyes slowly darkening."
+			message = "shudders violently for a moment, then becomes motionless, its eyes slowly darkening."
 			m_type = 1
 
 		if ("glare")
@@ -95,10 +100,9 @@
 				param = null
 
 			if (param)
-				message = "<B>[src]</B> glares at [param]."
+				message = "glares at [param]."
 			else
-				message = "<B>[src]</B> glares."
-			m_type = 1
+				message = "glares."
 
 		if ("stare")
 			var/M = null
@@ -111,10 +115,9 @@
 				param = null
 
 			if (param)
-				message = "<B>[src]</B> stares at [param]."
+				message = "stares at [param]."
 			else
-				message = "<B>[src]</B> stares."
-			m_type = 1
+				message = "stares."
 
 		if ("look")
 			var/M = null
@@ -128,9 +131,9 @@
 				param = null
 
 			if (param)
-				message = "<B>[src]</B> looks at [param]."
+				message = "looks at [param]."
 			else
-				message = "<B>[src]</B> looks."
+				message = "looks."
 			m_type = 1
 
 		if("beep")
@@ -144,11 +147,11 @@
 				param = null
 
 			if (param)
-				message = "<B>[src]</B> beeps at [param]."
+				message = "beeps at [param]."
 			else
-				message = "<B>[src]</B> beeps."
-			playsound(src.loc, 'twobeep.ogg', 50, 0)
-			m_type = 2
+				message = "beeps."
+			playsound(src.loc, 'sound/machines/twobeep.ogg', 50, 0)
+			m_type = 1
 
 		if("ping")
 			var/M = null
@@ -161,11 +164,11 @@
 				param = null
 
 			if (param)
-				message = "<B>[src]</B> pings at [param]."
+				message = "pings at [param]."
 			else
-				message = "<B>[src]</B> pings."
-			playsound(src.loc, 'ping.ogg', 50, 0)
-			m_type = 2
+				message = "pings."
+			playsound(src.loc, 'sound/machines/ping.ogg', 50, 0)
+			m_type = 1
 
 		if("buzz")
 			var/M = null
@@ -178,48 +181,36 @@
 				param = null
 
 			if (param)
-				message = "<B>[src]</B> buzzes at [param]."
+				message = "buzzes at [param]."
 			else
-				message = "<B>[src]</B> buzzes."
-			playsound(src.loc, 'buzz-sigh.ogg', 50, 0)
-			m_type = 2
+				message = "buzzes."
+			playsound(src.loc, 'sound/machines/buzz-sigh.ogg', 50, 0)
+			m_type = 1
 
 		if("law")
-			message = "<B>[src]</B> shows its legal authorization barcode."
+			if (istype(module,/obj/item/weapon/robot_module/security))
+				message = "shows its legal authorization barcode."
 
-			playsound(src.loc, 'biamthelaw.ogg', 50, 0)
-			m_type = 2
-
-		if ("me")
-			if(silent)
-				return
-			if (src.client && (client.muted || client.muted_complete))
-				src << "You are muted."
-				return
-			if (stat)
-				return
-			if(!(message))
-				return
+				playsound(src.loc, 'sound/voice/biamthelaw.ogg', 50, 0)
+				m_type = 2
 			else
-				if(cmptext(copytext(message, 1, 3), "v "))
-					message = "<B>[src]</B> [copytext(message, 3)]"
-					m_type = 1
-				else if(cmptext(copytext(message, 1, 3), "h "))
-					message = "<B>[src]</B> [copytext(message, 3)]"
-					m_type = 2
-				else
-					message = "<B>[src]</B> [message]"
+				src << "You are not THE LAW, pal."
 
-		if("help")
-			src << "beep-(none)/mob, ping-(none)/mob, buzz-(none)/mob, look-(none)/mob, stare-(none)/mob, glare-(none)/mob, twitch, twitch_s, law"
+		if("halt")
+			if (istype(module,/obj/item/weapon/robot_module/security))
+				message = "<B>[src]</B>'s speakers skreech, \"Halt! Security!\"."
 
+				playsound(src.loc, 'sound/voice/halt.ogg', 50, 0)
+				m_type = 2
+			else
+				src << "You are not security."
+
+		if ("help")
+			src << "salute, bow-(none)/mob, clap, flap, aflap, twitch, twitch_s, nod, deathgasp, glare-(none)/mob, stare-(none)/mob, look, beep, ping, \nbuzz, law, halt"
 		else
-			src << text("Invalid Emote: []", act)
+			src << "\blue Unusable emote '[act]'. Say *help for a list."
+
 	if ((message && src.stat == 0))
-		if (m_type & 1)
-			for(var/mob/O in viewers(src, null))
-				O.show_message(message, m_type)
-		else
-			for(var/mob/O in hearers(src, null))
-				O.show_message(message, m_type)
+		custom_emote(m_type,message)
+
 	return

@@ -1,7 +1,8 @@
+//This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:31
+
 /datum/data
-	var
-		name = "data"
-		size = 1.0
+	var/name = "data"
+	var/size = 1.0
 
 
 /datum/data/function
@@ -26,22 +27,6 @@
 /datum/data/text
 	name = "text"
 	var/data = null
-
-
-
-/datum/powernet
-	var
-		list/cables = list()	// all cables & junctions
-		list/nodes = list()		// all APCs & sources
-
-		newload = 0
-		load = 0
-		newavail = 0
-		avail = 0
-		viewload = 0
-		number = 0
-		perapc = 0			// per-apc avilability
-		netexcess = 0
 
 
 

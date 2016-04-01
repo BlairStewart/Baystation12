@@ -1,6 +1,7 @@
 obj/machinery/atmospherics/trinary
 	dir = SOUTH
 	initialize_directions = SOUTH|NORTH|WEST
+	use_power = 0
 
 	var/datum/gas_mixture/air1
 	var/datum/gas_mixture/air2
@@ -51,18 +52,18 @@ obj/machinery/atmospherics/trinary
 
 		return null
 
-	Del()
+	Destroy()
 		loc = null
 
 		if(node1)
 			node1.disconnect(src)
-			del(network1)
+			qdel(network1)
 		if(node2)
 			node2.disconnect(src)
-			del(network2)
+			qdel(network2)
 		if(node3)
 			node3.disconnect(src)
-			del(network3)
+			qdel(network3)
 
 		node1 = null
 		node2 = null
@@ -79,20 +80,23 @@ obj/machinery/atmospherics/trinary
 
 		for(var/obj/machinery/atmospherics/target in get_step(src,node1_connect))
 			if(target.initialize_directions & get_dir(target,src))
-				node1 = target
-				break
+				if (check_connect_types(target,src))
+					node1 = target
+					break
 
 		for(var/obj/machinery/atmospherics/target in get_step(src,node2_connect))
 			if(target.initialize_directions & get_dir(target,src))
-				node2 = target
-				break
-
+				if (check_connect_types(target,src))
+					node2 = target
+					break
 		for(var/obj/machinery/atmospherics/target in get_step(src,node3_connect))
 			if(target.initialize_directions & get_dir(target,src))
-				node3 = target
-				break
+				if (check_connect_types(target,src))
+					node3 = target
+					break
 
 		update_icon()
+		update_underlays()
 
 	build_network()
 		if(!network1 && node1)
@@ -149,15 +153,17 @@ obj/machinery/atmospherics/trinary
 
 	disconnect(obj/machinery/atmospherics/reference)
 		if(reference==node1)
-			del(network1)
+			qdel(network1)
 			node1 = null
 
 		else if(reference==node2)
-			del(network2)
+			qdel(network2)
 			node2 = null
 
 		else if(reference==node3)
-			del(network3)
+			qdel(network3)
 			node3 = null
+
+		update_underlays()
 
 		return null

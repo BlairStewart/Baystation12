@@ -1,20 +1,10 @@
 /mob/living/silicon/robot/Login()
 	..()
+	regenerate_icons()
+	show_laws(0)
 
-	update_clothing()
+	winset(src, null, "mainwindow.macro=borgmacro hotkey_toggle.is-checked=false input.focus=true input.background-color=#D3B5B5")
 
-	if (!isturf(src.loc))
-		src.client.eye = src.loc
-		src.client.perspective = EYE_PERSPECTIVE
-	if (src.stat == 2)
-		src.verbs += /mob/proc/ghost
-	if(src.real_name == "Cyborg")
-		src.real_name += " "
-		src.real_name += "-[rand(1, 999)]"
-		src.name = src.real_name
-	if(!src.connected_ai)
-		for(var/mob/living/silicon/ai/A in world)
-			src.connected_ai = A
-			A.connected_robots += src
-			break
-	return
+	// Forces synths to select an icon relevant to their module
+	if(!icon_selected)
+		choose_icon(icon_selection_tries, module_sprites)

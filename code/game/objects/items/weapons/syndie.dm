@@ -1,5 +1,5 @@
 /obj/item/weapon/syndie
-	icon = 'syndieweapons.dmi'
+	icon = 'icons/obj/syndieweapons.dmi'
 
 /*C-4 explosive charge and etc, replaces the old syndie transfer valve bomb.*/
 
@@ -9,8 +9,8 @@
 /obj/item/weapon/syndie/c4explosive
 	icon_state = "c-4small_0"
 	item_state = "c-4small"
-	name = "mysterious package"
-	desc = "A mysterious package."
+	name = "normal-sized package"
+	desc = "A small wrapped package."
 	w_class = 3
 
 	var/power = 1  /*Size of the explosion.*/
@@ -27,9 +27,9 @@
 	var/K = rand(1,2000)
 	K = md5(num2text(K)+name)
 	K = copytext(K,1,7)
-	src.desc += "\n You see [K] engraved on \the [src]"
+	src.desc += "\n You see [K] engraved on \the [src]."
 	var/obj/item/weapon/syndie/c4detonator/detonator = new(src.loc)
-	detonator.desc += "\n You see [K] engraved on \the [src]"
+	detonator.desc += "\n You see [K] engraved on the lighter."
 	detonator.bomb = src
 
 /obj/item/weapon/syndie/c4explosive/proc/detonate()
@@ -44,7 +44,7 @@
 					D.open()
 			if(istype(T,/turf/simulated/wall))
 				T.dismantle_wall(1)
-		del(src)
+		qdel(src)
 
 
 /*Detonator, disguised as a lighter*/
@@ -53,8 +53,8 @@
 /obj/item/weapon/syndie/c4detonator
 	icon_state = "c-4detonator_0"
 	item_state = "c-4detonator"
-	name = "lighter"  /*Sneaky, thanks Dreyfus.*/
-	desc = "A disposable lighter, it's quite heavy."
+	name = "\improper Zippo lighter"  /*Sneaky, thanks Dreyfus.*/
+	desc = "The zippo."
 	w_class = 1
 
 	var/obj/item/weapon/syndie/c4explosive/bomb
@@ -71,12 +71,12 @@
 				pr_open = 1
 				switch(alert(user, "What would you like to do?", "Lighter", "Press the button.", "Close the lighter."))
 					if("Press the button.")
-						user << "\red You press the button."
+						user << "<span class='warning'>You press the button.</span>"
 						flick("c-4detonator_click", src)
 						if(src.bomb)
 							src.bomb.detonate()
-							log_admin("[user.real_name]([user.ckey]) has triggered [src.bomb] with [src].")
-							message_admins("\red [user.real_name]([user.ckey]) has triggered [src.bomb] with [src].")
+							log_admin("[key_name(user)] has triggered [src.bomb] with [src].")
+							message_admins("<span class='danger'>[key_name_admin(user)] has triggered [src.bomb] with [src].</span>")
 
 					if("Close the lighter.")
 						src.icon_state = "c-4detonator_0"

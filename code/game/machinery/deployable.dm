@@ -14,7 +14,7 @@ for reference:
 	access_morgue = 6
 	access_tox = 7
 	access_tox_storage = 8
-	access_medlab = 9
+	access_genetics = 9
 	access_engine = 10
 	access_engine_equip= 11
 	access_maint_tunnels = 12
@@ -53,104 +53,103 @@ for reference:
 
 */
 
-
-//Barricades, maybe there will be a metal one later...
-/obj/structure/barricade/wooden
-	name = "wooden barricade"
-	desc = "This space is blocked off by a wooden barricade."
-	icon = 'structures.dmi'
-	icon_state = "woodenbarricade"
+//Barricades!
+/obj/structure/barricade
+	name = "barricade"
+	desc = "This space is blocked off by a barricade."
+	icon = 'icons/obj/structures.dmi'
+	icon_state = "barricade"
 	anchored = 1.0
 	density = 1.0
-	var/health = 100.0
-	var/maxhealth = 100.0
+	var/health = 100
+	var/maxhealth = 100
+	var/material/material
 
-	attackby(obj/item/weapon/W as obj, mob/user as mob)
-		if (istype(W, /obj/item/stack/sheet/wood))
-			if (src.health < src.maxhealth)
-				for(var/mob/O in viewers(src, null))
-					O << "\red [user] begins to repair the [src]!"
-				if(do_after(user,20))
-					src.health = src.maxhealth
-					W:use(1)
-					for(var/mob/O in viewers(src, null))
-						O << "\red [user] repairs the [src]!"
-					return
+/obj/structure/barricade/New(var/newloc, var/material_name)
+	..(newloc)
+	if(!material_name)
+		material_name = "wood"
+	material = get_material_by_name("[material_name]")
+	if(!material)
+		qdel(src)
+		return
+	name = "[material.display_name] barricade"
+	desc = "This space is blocked off by a barricade made of [material.display_name]."
+	color = material.icon_colour
+	maxhealth = material.integrity
+	health = maxhealth
+
+/obj/structure/barricade/get_material()
+	return material
+
+/obj/structure/barricade/attackby(obj/item/W as obj, mob/user as mob)
+	if (istype(W, /obj/item/stack))
+		var/obj/item/stack/D = W
+		if(D.get_material_name() != material.name)
+			return //hitting things with the wrong type of stack usually doesn't produce messages, and probably doesn't need to.
+		if (health < maxhealth)
+			if (D.get_amount() < 1)
+				user << "<span class='warning'>You need one sheet of [material.display_name] to repair \the [src].</span>"
+				return
+			visible_message("<span class='notice'>[user] begins to repair \the [src].</span>")
+			if(do_after(user,20) && health < maxhealth)
+				if (D.use(1))
+					health = maxhealth
+					visible_message("<span class='notice'>[user] repairs \the [src].</span>")
+				return
+		return
+	else
+		user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
+		switch(W.damtype)
+			if("fire")
+				src.health -= W.force * 1
+			if("brute")
+				src.health -= W.force * 0.75
 			else
-				return
-			return
-		else
-			switch(W.damtype)
-				if("fire")
-					src.health -= W.force * 1
-				if("brute")
-					src.health -= W.force * 0.75
-				else
-			if (src.health <= 0)
-				for(var/mob/O in viewers(src, null))
-					O << "\red <B>The barricade is smashed appart!</B>"
-				new /obj/item/stack/sheet/wood(get_turf(src))
-				new /obj/item/stack/sheet/wood(get_turf(src))
-				new /obj/item/stack/sheet/wood(get_turf(src))
-				del(src)
-			..()
-
-	ex_act(severity)
-		switch(severity)
-			if(1.0)
-				for(var/mob/O in viewers(src, null))
-					O << "\red <B>The barricade is blown appart!</B>"
-				del(src)
-				return
-			if(2.0)
-				src.health -= 25
-				if (src.health <= 0)
-					for(var/mob/O in viewers(src, null))
-						O << "\red <B>The barricade is blown appart!</B>"
-					new /obj/item/stack/sheet/wood(get_turf(src))
-					new /obj/item/stack/sheet/wood(get_turf(src))
-					new /obj/item/stack/sheet/wood(get_turf(src))
-					del(src)
-				return
-
-	meteorhit()
-		for(var/mob/O in viewers(src, null))
-			O << "\red <B>The barricade is smashed appart!</B>"
-		new /obj/item/stack/sheet/wood(get_turf(src))
-		new /obj/item/stack/sheet/wood(get_turf(src))
-		new /obj/item/stack/sheet/wood(get_turf(src))
-		del(src)
-		return
-
-	blob_act()
-		src.health -= 25
 		if (src.health <= 0)
-			for(var/mob/O in viewers(src, null))
-				O << "\red <B>The blob eats through the barricade!</B>"
-			del(src)
-		return
+			visible_message("<span class='danger'>The barricade is smashed apart!</span>")
+			dismantle()
+			qdel(src)
+			return
+		..()
 
-	CanPass(atom/movable/mover, turf/target, height=0, air_group=0)//So bullets will fly over and stuff.
-		if(air_group || (height==0))
-			return 1
-		if(istype(mover) && mover.checkpass(PASSTABLE))
-			return 1
-		else
-			return 0
+/obj/structure/barricade/proc/dismantle()
+	material.place_dismantled_product(get_turf(src))
+	qdel(src)
+	return
 
+/obj/structure/barricade/ex_act(severity)
+	switch(severity)
+		if(1.0)
+			visible_message("<span class='danger'>\The [src] is blown apart!</span>")
+			qdel(src)
+			return
+		if(2.0)
+			src.health -= 25
+			if (src.health <= 0)
+				visible_message("<span class='danger'>\The [src] is blown apart!</span>")
+				dismantle()
+			return
+
+/obj/structure/barricade/CanPass(atom/movable/mover, turf/target, height=0, air_group=0)//So bullets will fly over and stuff.
+	if(air_group || (height==0))
+		return 1
+	if(istype(mover) && mover.checkpass(PASSTABLE))
+		return 1
+	else
+		return 0
 
 //Actual Deployable machinery stuff
-
 /obj/machinery/deployable
 	name = "deployable"
 	desc = "deployable"
-	icon = 'objects.dmi'
+	icon = 'icons/obj/objects.dmi'
 	req_access = list(access_security)//I'm changing this until these are properly tested./N
 
 /obj/machinery/deployable/barrier
 	name = "deployable barrier"
 	desc = "A deployable barrier. Swipe your ID card to lock/unlock it."
-	icon = 'objects.dmi'
+	icon = 'icons/obj/objects.dmi'
 	anchored = 0.0
 	density = 1.0
 	icon_state = "barrier0"
@@ -181,48 +180,20 @@ for reference:
 					var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
 					s.set_up(2, 1, src)
 					s.start()
-					for(var/mob/O in viewers(src, null))
-						O << "\red BZZzZZzZZzZT"
+					visible_message("<span class='warning'>BZZzZZzZZzZT</span>")
 					return
 			return
-		else if (istype(W, /obj/item/weapon/card/emag))
-			var/obj/item/weapon/card/emag/E = W
-			if(E.uses)
-				E.uses--
-			else
-				return
-			if (src.emagged == 0)
-				src.emagged = 1
-				src.req_access = null
-				user << "You break the ID authentication lock on the [src]."
-				var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-				s.set_up(2, 1, src)
-				s.start()
-				for(var/mob/O in viewers(src, null))
-					O << "\red BZZZZT"
-				return
-			else if (src.emagged == 1)
-				src.emagged = 2
-				user << "You short out the anchoring mechanism on the [src]."
-				var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-				s.set_up(2, 1, src)
-				s.start()
-				for(var/mob/O in viewers(src, null))
-					O << "\red BZZZZT"
-				return
 		else if (istype(W, /obj/item/weapon/wrench))
 			if (src.health < src.maxhealth)
 				src.health = src.maxhealth
 				src.emagged = 0
 				src.req_access = list(access_security)
-				for(var/mob/O in viewers(src, null))
-					O << "\red [user] repairs the [src]!"
+				visible_message("<span class='warning'>[user] repairs \the [src]!</span>")
 				return
 			else if (src.emagged > 0)
 				src.emagged = 0
 				src.req_access = list(access_security)
-				for(var/mob/O in viewers(src, null))
-					O << "\red [user] repairs the [src]!"
+				visible_message("<span class='warning'>[user] repairs \the [src]!</span>")
 				return
 			return
 		else
@@ -246,16 +217,13 @@ for reference:
 				if (src.health <= 0)
 					src.explode()
 				return
-
-	meteorhit()
-		src.explode()
-		return
-
-	blob_act()
-		src.health -= 25
-		if (src.health <= 0)
-			src.explode()
-		return
+	emp_act(severity)
+		if(stat & (BROKEN|NOPOWER))
+			return
+		if(prob(50/severity))
+			locked = !locked
+			anchored = !anchored
+			icon_state = "barrier[src.locked]"
 
 	CanPass(atom/movable/mover, turf/target, height=0, air_group=0)//So bullets will fly over and stuff.
 		if(air_group || (height==0))
@@ -267,12 +235,11 @@ for reference:
 
 	proc/explode()
 
-		for(var/mob/O in hearers(src, null))
-			O.show_message("\red <B>[src] blows apart!</B>", 1)
+		visible_message("<span class='danger'>[src] blows apart!</span>")
 		var/turf/Tsec = get_turf(src)
 
 	/*	var/obj/item/stack/rods/ =*/
-		new /obj/item/stack/rods(Tsec)
+		PoolOrNew(/obj/item/stack/rods, Tsec)
 
 		var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
 		s.set_up(3, 1, src)
@@ -280,4 +247,25 @@ for reference:
 
 		explosion(src.loc,-1,-1,0)
 		if(src)
-			del(src)
+			qdel(src)
+
+		
+/obj/machinery/deployable/barrier/emag_act(var/remaining_charges, var/mob/user)
+	if (src.emagged == 0)
+		src.emagged = 1
+		src.req_access.Cut()
+		src.req_one_access.Cut()
+		user << "You break the ID authentication lock on \the [src]."
+		var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
+		s.set_up(2, 1, src)
+		s.start()
+		visible_message("<span class='warning'>BZZzZZzZZzZT</span>")
+		return 1
+	else if (src.emagged == 1)
+		src.emagged = 2
+		user << "You short out the anchoring mechanism on \the [src]."
+		var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
+		s.set_up(2, 1, src)
+		s.start()
+		visible_message("<span class='warning'>BZZzZZzZZzZT</span>")
+		return 1

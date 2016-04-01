@@ -2,18 +2,15 @@
 	name = "timer"
 	desc = "Used to time things. Works well with contraptions which has to count down. Tick tock."
 	icon_state = "timer"
-	m_amt = 500
-	g_amt = 50
-	w_amt = 10
-	origin_tech = "magnets=1"
+	origin_tech = list(TECH_MAGNET = 1)
+	matter = list(DEFAULT_WALL_MATERIAL = 500, "glass" = 50, "waste" = 10)
 
-	secured = 1
-	small_icon_state_left = "timer_left"
-	small_icon_state_right = "timer_right"
+	wires = WIRE_PULSE
 
-	var
-		timing = 0
-		time = 10
+	secured = 0
+
+	var/timing = 0
+	var/time = 10
 
 	proc
 		timer_end()
@@ -21,7 +18,9 @@
 
 	activate()
 		if(!..())	return 0//Cooldown check
+
 		timing = !timing
+
 		update_icon()
 		return 0
 
@@ -38,10 +37,10 @@
 
 
 	timer_end()
-		if((!secured)||(cooldown > 0))	return 0
+		if(!secured)	return 0
 		pulse(0)
-		for(var/mob/O in hearers(null, null))
-			O.show_message(text("\icon[] *beep* *beep*", src), 3, "*beep* *beep*", 2)
+		if(!holder)
+			visible_message("\icon[src] *beep* *beep*", "*beep* *beep*")
 		cooldown = 2
 		spawn(10)
 			process_cooldown()
@@ -59,18 +58,11 @@
 
 
 	update_icon()
-		overlays = null
-		small_icon_state_overlays = list()
+		overlays.Cut()
+		attached_overlays = list()
 		if(timing)
-			overlays += text("timer_timing")
-			small_icon_state_overlays += text("timer_timing")
-			if(master && istype(master, /obj/item/weapon/chem_grenade))
-				var/obj/item/weapon/chem_grenade/M = master
-				M.c_state(1)
-		else
-			if(master && istype(master, /obj/item/weapon/chem_grenade))
-				var/obj/item/weapon/chem_grenade/M = master
-				M.c_state(0)
+			overlays += "timer_timing"
+			attached_overlays += "timer_timing"
 		if(holder)
 			holder.update_icon()
 		return
@@ -91,15 +83,14 @@
 
 
 	Topic(href, href_list)
-		..()
-		if(get_dist(src, usr) > 1)
+		if(..()) return 1
+		if(!usr.canmove || usr.stat || usr.restrained() || !in_range(loc, usr))
 			usr << browse(null, "window=timer")
 			onclose(usr, "timer")
 			return
 
 		if(href_list["time"])
 			timing = text2num(href_list["time"])
-			processing_objects.Add(src)
 			update_icon()
 
 		if(href_list["tp"])

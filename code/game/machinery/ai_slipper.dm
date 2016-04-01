@@ -1,9 +1,11 @@
 /obj/machinery/ai_slipper
-	name = "AI Liquid Dispenser"
-	icon = 'device.dmi'
-	icon_state = "motion3"
+	name = "\improper AI Liquid Dispenser"
+	icon = 'icons/obj/device.dmi'
+	icon_state = "motion0"
 	layer = 3
 	anchored = 1.0
+	use_power = 1
+	idle_power_usage = 10
 	var/uses = 20
 	var/disabled = 1
 	var/lethal = 0
@@ -13,16 +15,20 @@
 	var/cooldown_on = 0
 	req_access = list(access_ai_upload)
 
-/obj/machinery/ai_slipper/power_change()
-	if(stat & BROKEN)
-		return
-	else
-		if( powered() )
-			stat &= ~NOPOWER
-		else
-			icon_state = "motion0"
-			stat |= NOPOWER
 
+/obj/machinery/ai_slipper/New()
+	..()
+	update_icon()
+
+/obj/machinery/ai_slipper/power_change()
+	..()
+	update_icon()
+
+/obj/machinery/ai_slipper/update_icon()
+	if (stat & NOPOWER || stat & BROKEN)
+		icon_state = "motion0"
+	else
+		icon_state = disabled ? "motion0" : "motion3"
 
 /obj/machinery/ai_slipper/proc/setState(var/enabled, var/uses)
 	src.disabled = disabled
@@ -40,13 +46,13 @@
 			user << "You [ locked ? "lock" : "unlock"] the device."
 			if (locked)
 				if (user.machine==src)
-					user.machine = null
+					user.unset_machine()
 					user << browse(null, "window=ai_slipper")
 			else
 				if (user.machine==src)
 					src.attack_hand(usr)
 		else
-			user << "\red Access denied."
+			user << "<span class='warning'>Access denied.</span>"
 			return
 	return
 
@@ -59,11 +65,11 @@
 	if ( (get_dist(src, user) > 1 ))
 		if (!istype(user, /mob/living/silicon))
 			user << text("Too far away.")
-			user.machine = null
+			user.unset_machine()
 			user << browse(null, "window=ai_slipper")
 			return
 
-	user.machine = src
+	user.set_machine(src)
 	var/loc = src.loc
 	if (istype(loc, /turf))
 		loc = loc:loc
@@ -91,7 +97,7 @@
 			return
 	if (href_list["toggleOn"])
 		src.disabled = !src.disabled
-		icon_state = src.disabled? "motion0":"motion3"
+		update_icon()
 	if (href_list["toggleUse"])
 		if(cooldown_on || disabled)
 			return

@@ -1,79 +1,184 @@
-/mob/verb/listen_ooc()
-	set name = "Un/Mute OOC"
+
+/client/verb/ooc(msg as text)
+	set name = "OOC"
 	set category = "OOC"
 
-	if (src.client)
-		src.client.listen_ooc = !src.client.listen_ooc
-		if (src.client.listen_ooc)
-			src << "\blue You are now listening to messages on the OOC channel."
-		else
-			src << "\blue You are no longer listening to messages on the OOC channel."
+	if(say_disabled)	//This is here to try to identify lag problems
+		usr << "<span class='warning'>Speech is currently admin-disabled.</span>"
+		return
 
-/mob/verb/ooc(msg as text)
-	set name = "OOC" //Gave this shit a shorter name so you only have to time out "ooc" rather than "ooc message" to use it --NeoFite
+	if(!mob)	return
+	if(IsGuestKey(key))
+		src << "Guests may not use OOC."
+		return
+
+	msg = sanitize(msg)
+	if(!msg)	return
+
+	if(!(prefs.toggles & CHAT_OOC))
+		src << "<span class='warning'>You have OOC muted.</span>"
+		return
+
+	if(!holder)
+		if(!config.ooc_allowed)
+			src << "<span class='danger'>OOC is globally muted.</span>"
+			return
+		if(!config.dooc_allowed && (mob.stat == DEAD))
+			usr << "<span class='danger'>OOC for dead mobs has been turned off.</span>"
+			return
+		if(prefs.muted & MUTE_OOC)
+			src << "<span class='danger'>You cannot use OOC (muted).</span>"
+			return
+		if(handle_spam_prevention(msg,MUTE_OOC))
+			return
+		if(findtext(msg, "byond://"))
+			src << "<B>Advertising other servers is not allowed.</B>"
+			log_admin("[key_name(src)] has attempted to advertise in OOC: [msg]")
+			message_admins("[key_name_admin(src)] has attempted to advertise in OOC: [msg]")
+			return
+
+	log_ooc("[mob.name]/[key] : [msg]")
+
+	var/ooc_style = "everyone"
+	if(holder && !holder.fakekey)
+		ooc_style = "elevated"
+		if(holder.rights & R_MOD)
+			ooc_style = "moderator"
+		if(holder.rights & R_DEBUG)
+			ooc_style = "developer"
+		if(holder.rights & R_ADMIN)
+			ooc_style = "admin"
+
+	for(var/client/target in clients)
+		if(target.prefs.toggles & CHAT_OOC)
+			var/display_name = src.key
+			if(holder)
+				if(holder.fakekey)
+					if(target.holder)
+						display_name = "[holder.fakekey]/([src.key])"
+					else
+						display_name = holder.fakekey
+			if(holder && !holder.fakekey && (holder.rights & R_ADMIN) && config.allow_admin_ooccolor && (src.prefs.ooccolor != initial(src.prefs.ooccolor))) // keeping this for the badmins
+				target << "<font color='[src.prefs.ooccolor]'><span class='ooc'>" + create_text_tag("ooc", "OOC:", target) + " <EM>[display_name]:</EM> <span class='message'>[msg]</span></span></font>"
+			else
+				target << "<span class='ooc'><span class='[ooc_style]'>" + create_text_tag("ooc", "OOC:", target) + " <EM>[display_name]:</EM> <span class='message'>[msg]</span></span></span>"
+
+/client/verb/looc(msg as text)
+	set name = "LOOC"
+	set desc = "Local OOC, seen only by those in view."
 	set category = "OOC"
 
-	msg = copytext(sanitize(msg), 1, MAX_MESSAGE_LEN)
+	if(say_disabled)	//This is here to try to identify lag problems
+		usr << "<span class='danger'>Speech is currently admin-disabled.</span>"
+		return
+
+	if(!mob)
+		return
+
+	if(IsGuestKey(key))
+		src << "Guests may not use OOC."
+		return
+
+	msg = sanitize(msg)
 	if(!msg)
 		return
-	else if (!src.client.listen_ooc)
-		return
-	else if (!ooc_allowed && !src.client.holder)
-		return
-	else if (!dooc_allowed && !src.client.holder && (src.client.deadchat != 0))
-		usr << "OOC for dead mobs has been turned off."
-		return
-	else if (src.client && (src.client.muted || src.client.muted_complete))
-		src << "You are muted."
-		return
-	else if (findtext(msg, "byond://") && !src.client.holder)
-		src << "<B>Advertising other servers is not allowed.</B>"
-		log_admin("[key_name(src)] has attempted to advertise in OOC.")
-		message_admins("[key_name_admin(src)] has attempted to advertise in OOC.")
+
+	if(!(prefs.toggles & CHAT_LOOC))
+		src << "<span class='danger'>You have LOOC muted.</span>"
 		return
 
-	log_ooc("[src.name]/[src.key] : [msg]")
+	if(!holder)
+		if(!config.looc_allowed)
+			src << "<span class='danger'>LOOC is globally muted.</span>"
+			return
+		if(!config.dooc_allowed && (mob.stat == DEAD))
+			usr << "<span class='danger'>OOC for dead mobs has been turned off.</span>"
+			return
+		if(prefs.muted & MUTE_OOC)
+			src << "<span class='danger'>You cannot use OOC (muted).</span>"
+			return
+		if(handle_spam_prevention(msg, MUTE_OOC))
+			return
+		if(findtext(msg, "byond://"))
+			src << "<B>Advertising other servers is not allowed.</B>"
+			log_admin("[key_name(src)] has attempted to advertise in OOC: [msg]")
+			message_admins("[key_name_admin(src)] has attempted to advertise in OOC: [msg]")
+			return
 
-	for (var/client/C)
-		if (src.client.holder && (!src.client.stealth || C.holder))
-//			C << "<span class=\"adminooc\"><span class=\"prefix\">OOC:</span> <span class=\"name\">[src.key]:</span> <span class=\"message\">[msg]</span></span>"
-			if (src.client.holder.rank == "Admin Observer")
-				C << "<span class=\"gfartooc\"><span class=\"prefix\">OOC:</span> <span class=\"name\">[src.key][src.client.stealth ? "/([src.client.fakekey])" : ""]:</span> <span class=\"message\">[msg]</span></span>"
-			else if (src.client.holder.rank == "Retired Admin")
-				C << "<span class=\"ooc\"><span class=\"prefix\">OOC:</span> <span class=\"name\">[src.key][src.client.stealth ? "/([src.client.fakekey])" : ""]:</span> <span class=\"message\">[msg]</span></span>"
+	log_ooc("(LOCAL) [mob.name]/[key] : [msg]")
+
+	var/mob/source = mob.get_looc_source()
+
+	var/display_name = key
+	if(holder && holder.fakekey)
+		display_name = holder.fakekey
+	if(mob.stat != DEAD)
+		display_name = mob.name
+
+	var/turf/T = get_turf(source)
+	var/list/listening = list()
+	listening |= src	// We can always hear ourselves.
+	var/list/listening_obj = list()
+	var/list/eye_heard = list()
+
+		// This is essentially a copy/paste from living/say() the purpose is to get mobs inside of objects without recursing through
+		// the contents of every mob and object in get_mobs_or_objects_in_view() looking for PAI's inside of the contents of a bag inside the
+		// contents of a mob inside the contents of a welded shut locker we essentially get a list of turfs and see if the mob is on one of them.
+
+	if(T)
+		var/list/hear = hear(7,T)
+		var/list/hearturfs = list()
+
+		for(var/I in hear)
+			if(ismob(I))
+				var/mob/M = I
+				listening |= M.client
+				hearturfs += M.locs[1]
+			else if(isobj(I))
+				var/obj/O = I
+				hearturfs |= O.locs[1]
+				listening_obj |= O
+
+		for(var/mob/M in player_list)
+			if(!M.client || !(M.client.prefs.toggles & CHAT_LOOC))
+				continue
+			if(isAI(M))
+				var/mob/living/silicon/ai/A = M
+				if(A.eyeobj.locs[1] in hearturfs)
+					eye_heard |= M.client
+					listening |= M.client
+					continue
+				
+			if(M.loc && M.locs[1] in hearturfs)
+				listening |= M.client
+
+	
+	for(var/client/t in listening)
+		var/admin_stuff = ""
+		var/prefix = ""
+		if(t in admins)
+			admin_stuff += "/([key])"
+			if(t != src)
+				admin_stuff += "([admin_jump_link(mob, t.holder)])"
+		if(isAI(t.mob))
+			if(t in eye_heard)
+				prefix = "(Eye) "
 			else
-				C << "<font color=[src.client.ooccolor]><b><span class=\"prefix\">OOC:</span> <span class=\"name\">[src.key][src.client.stealth ? "/([src.client.fakekey])" : ""]:</span> <span class=\"message\">[msg]</span></b></font>"
-
-		else if (C.listen_ooc)
-			C << "<span class=\"ooc\"><span class=\"prefix\">OOC:</span> <span class=\"name\">[src.client.stealth ? src.client.fakekey : src.key]:</span> <span class=\"message\">[msg]</span></span>"
-
-/*
-/mob/verb/goonsay(msg as text)
-	set name = "Goonsay"
-	if (!src.client.authenticated || !src.client.goon)
-		src << "You are not authorized to communicate over these channels."
-		return
-	msg = copytext(sanitize(msg), 1, MAX_MESSAGE_LEN)
-	if (!msg)
-		return
-	else if (!src.client.listen_ooc)
-		return
-	else if (!goonsay_allowed && !src.client.holder)
-		return
-	else if (src.muted)
-		return
-
-	log_ooc("GOON : [key_name(src)] : [msg]")
-
-	for (var/client/C)
-		if (C.goon)
-			if(src.client.holder && (!src.client.stealth || C.holder))
-				if (src.client.holder.rank == "Admin Observer")
-					C << "<span class=\"gfartgoonsay\"><span class=\"prefix\">GOONSAY:</span> <span class=\"name\">[src.key][src.client.stealth ? "/([src.client.fakekey])" : ""]:</span> <span class=\"message\">[msg]</span></span>"
-				else
-					C << "<span class=\"admingoonsay\"><span class=\"prefix\">GOONSAY:</span> <span class=\"name\">[src.key][src.client.stealth ? "/([src.client.fakekey])" : ""]:</span> <span class=\"message\">[msg]</span></span>"
-			else if(C.listen_ooc)
-				C << "<span class=\"goonsay\"><span class=\"prefix\">GOONSAY:</span> <span class=\"name\">[src.client.stealth ? src.client.fakekey : src.key]:</span> <span class=\"message\">[msg]</span></span>"
+				prefix = "(Core) "
+		t << "<span class='ooc'><span class='looc'>" + create_text_tag("looc", "LOOC:", t) + " <span class='prefix'>[prefix]</span><EM>[display_name][admin_stuff]:</EM> <span class='message'>[msg]</span></span></span>"
 
 
-				-- Skie */
+	for(var/client/adm in admins)	//Now send to all admins that weren't in range.
+		if(!(adm in listening))
+			var/admin_stuff = "/([key])([admin_jump_link(mob, adm.holder)])"
+			var/prefix = "(R)"
+
+			adm << "<span class='ooc'><span class='looc'>" + create_text_tag("looc", "LOOC:", adm) + " <span class='prefix'>[prefix]</span><EM>[display_name][admin_stuff]:</EM> <span class='message'>[msg]</span></span></span>"
+
+/mob/proc/get_looc_source()
+	return src
+
+/mob/living/silicon/ai/get_looc_source()
+	if(eyeobj)
+		return eyeobj
+	return src

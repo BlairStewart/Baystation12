@@ -2,8 +2,9 @@
 	desc = "These exosuits are developed and produced by Vey-Med. (&copy; All rights reserved)."
 	name = "Odysseus"
 	icon_state = "odysseus"
+	initial_icon = "odysseus"
 	step_in = 2
-	max_temperature = 1500
+	max_temperature = 15000
 	health = 120
 	wreckage = /obj/effect/decal/mecha_wreckage/odysseus
 	internal_damage_threshold = 35
@@ -78,7 +79,7 @@
 		if(!M || M.stat || !(M in view(M)))	return
 		if(!M.client)	return
 		var/client/C = M.client
-		var/icon/tempHud = 'hud.dmi'
+		var/image/holder
 		for(var/mob/living/carbon/human/patient in view(M.loc))
 			if(M.see_invisible < patient.invisibility)
 				continue
@@ -86,14 +87,43 @@
 			for(var/datum/disease/D in patient.viruses)
 				if(!D.hidden[SCANNER])
 					foundVirus++
-			//if(patient.virus2)
-			//	foundVirus++
-			C.images += image(tempHud,patient,"hud[RoundHealth(patient.health)]")
+
+			for (var/ID in patient.virus2)
+				if (ID in virusDB)
+					foundVirus = 1
+					break
+
+			holder = patient.hud_list[HEALTH_HUD]
 			if(patient.stat == 2)
-				C.images += image(tempHud,patient,"huddead")
-			else if(patient.alien_egg_flag)
-				C.images += image(tempHud,patient,"hudxeno")
-			else if(foundVirus)
-				C.images += image(tempHud,patient,"hudill")
+				holder.icon_state = "hudhealth-100"
+				C.images += holder
 			else
-				C.images += image(tempHud,patient,"hudhealthy")
+				holder.icon_state = "hud[RoundHealth((patient.health-config.health_threshold_crit)/(patient.maxHealth-config.health_threshold_crit)*100)]"
+				C.images += holder
+
+			holder = patient.hud_list[STATUS_HUD]
+			if(patient.stat == 2)
+				holder.icon_state = "huddead"
+			else if(patient.status_flags & XENO_HOST)
+				holder.icon_state = "hudxeno"
+			else if(foundVirus)
+				holder.icon_state = "hudill"
+			else if(patient.has_brain_worms())
+				var/mob/living/simple_animal/borer/B = patient.has_brain_worms()
+				if(B.controlling)
+					holder.icon_state = "hudbrainworm"
+				else
+					holder.icon_state = "hudhealthy"
+			else
+				holder.icon_state = "hudhealthy"
+
+			C.images += holder
+
+/obj/mecha/medical/odysseus/loaded/New()
+	..()
+	var/obj/item/mecha_parts/mecha_equipment/ME = new /obj/item/mecha_parts/mecha_equipment/tool/sleeper
+	ME.attach(src)
+	ME = new /obj/item/mecha_parts/mecha_equipment/tool/sleeper
+	ME.attach(src)
+	ME = new /obj/item/mecha_parts/mecha_equipment/tool/syringe_gun
+	ME.attach(src)

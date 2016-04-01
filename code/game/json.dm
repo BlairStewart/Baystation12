@@ -87,15 +87,14 @@ obj/mapinfo
 	var/mapname = "thismap"
 	var/decks = 4
 proc/GetMapInfo()
-	var/obj/mapinfo/M = locate()
-	world << M.name
-	world << M.mapname
+//	var/obj/mapinfo/M = locate()
+//	Just removing these to try and fix the occasional JSON -> WORLD issue.
+//	world << M.name
+//	world << M.mapname
 client/proc/ChangeMap(var/X as text)
 	set name = "Change Map"
 	set category  = "Admin"
 	switchmap(X,X)
-proc/send2irc(msg,msg2)
- 	shell("python nudge.py [msg] [msg2]")
 proc/send2adminirc(channel,msg)
 	world << channel << " "<< msg
 	shell("python nudge.py '[channel]' [msg]")

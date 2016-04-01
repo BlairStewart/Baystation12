@@ -1,11 +1,22 @@
+#define FRAME_PROBABILITY 3
+#define THEFT_PROBABILITY 55
+#define KILL_PROBABILITY 37
+#define PROTECT_PROBABILITY 5
+
+#define LENIENT 0
+#define NORMAL 1
+#define HARD 2
+#define IMPOSSIBLE 3
+
+
 /proc/GenerateTheft(var/job,var/datum/mind/traitor)
 	var/list/datum/objective/objectives = list()
 
 	for(var/o in typesof(/datum/objective/steal))
 		if(o != /datum/objective/steal)		//Make sure not to get a blank steal objective.
-			objectives += new o(null,job)
-
-	//objectives += GenerateAssassinate(job,traitor)
+			var/datum/objective/target = new o(null,job)
+			objectives += target
+			objectives[target] = target.weight
 	return objectives
 
 /proc/GenerateAssassinate(var/job,var/datum/mind/traitor)
@@ -14,7 +25,9 @@
 	for(var/datum/mind/target in ticker.minds)
 		if((target != traitor) && istype(target.current, /mob/living/carbon/human))
 			if(target && target.current)
-				missions +=	new /datum/objective/assassinate(null,job,target)
+				var/datum/objective/target_obj = new /datum/objective/assassinate(null,job,target)
+				missions += target_obj
+				missions[target_obj] = target_obj.weight
 	return missions
 
 /proc/GenerateFrame(var/job,var/datum/mind/traitor)
@@ -23,7 +36,9 @@
 	for(var/datum/mind/target in ticker.minds)
 		if((target != traitor) && istype(target.current, /mob/living/carbon/human))
 			if(target && target.current)
-				missions +=	new /datum/objective/frame(null,job,target)
+				var/datum/objective/target_obj = new /datum/objective/frame(null,job,target)
+				missions += target_obj
+				missions[target_obj] = target_obj.weight
 	return missions
 
 /proc/GenerateProtection(var/job,var/datum/mind/traitor)
@@ -32,45 +47,144 @@
 	for(var/datum/mind/target in ticker.minds)
 		if((target != traitor) && istype(target.current, /mob/living/carbon/human))
 			if(target && target.current)
-				missions +=	new /datum/objective/protection(null,job,target)
+				var/datum/objective/target_obj = new /datum/objective/protection(null,job,target)
+				missions += target_obj
+				missions[target_obj] = target_obj.weight
 	return missions
 
 
-
 /proc/SelectObjectives(var/job,var/datum/mind/traitor,var/hijack = 0)
-	var/list/datum/objective/chosenobjectives = list()
-	var/list/datum/objective/theftobjectives = GenerateTheft(job,traitor)		//Separated all the objective types so they can be picked independantly of each other.
-	var/list/datum/objective/killobjectives = GenerateAssassinate(job,traitor)
-	var/list/datum/objective/frameobjectives = GenerateFrame(job,traitor)
-	var/list/datum/objective/protectobjectives = GenerateProtection(job,traitor)
-	//var/points
-	var/totalweight
-	var/selectobj
+	var/list/chosenobjectives = list()
+	var/list/theftobjectives = GenerateTheft(job,traitor)		//Separated all the objective types so they can be picked independantly of each other.
+	var/list/killobjectives = GenerateAssassinate(job,traitor)
+	var/list/frameobjectives = GenerateFrame(job,traitor)
+	var/list/protectobjectives = GenerateProtection(job,traitor)
+	var/total_weight
 	var/conflict
 
-	while(totalweight < 100)
-		selectobj = rand(1,100)	//Randomly determine the type of objective to be given.
-		if(!length(killobjectives) || !length(protectobjectives))	//If any of these lists are empty, just give them theft objectives.
-			var/datum/objective/objective = pick(theftobjectives)
+	var/steal_weight = THEFT_PROBABILITY
+	var/frame_weight = FRAME_PROBABILITY
+	var/kill_weight = KILL_PROBABILITY
+	var/protect_weight = PROTECT_PROBABILITY
+	var/target_weight = 50
+
+/////////////////////////////////////////////////////////////
+//HANDLE ASSIGNING OBJECTIVES BASED OFF OF PREVIOUS SUCCESS//
+/////////////////////////////////////////////////////////////
+
+	var/savefile/info = new("data/player_saves/[copytext(traitor.key, 1, 2)]/[traitor.key]/traitor.sav")
+	var/list/infos
+	info >> infos
+	if(istype(infos))
+		var/total_attempts = infos["Total"]
+		var/total_overall_success = infos["Success"]
+		var/success_ratio = total_overall_success/total_attempts
+		var/steal_success = infos["Steal"]
+		var/kill_success = infos["Kill"]
+		var/frame_success = infos["Frame"]
+		var/protect_success = infos["Protect"]
+
+		var/list/ordered_success = list(steal_success, kill_success, frame_success, protect_success)
+
+		var/difficulty = pick(LENIENT, LENIENT, NORMAL, NORMAL, NORMAL, HARD, HARD, IMPOSSIBLE)
+		//Highest to lowest in terms of success rate, and resulting weight for later computation
+		var/success_weights = list(1, 1, 1, 1)
+		switch(difficulty)
+			if(LENIENT)
+				success_weights = list(1.5, 1, 0.75, 0.5)
+				target_weight = success_ratio*100
+			if(NORMAL)
+				target_weight = success_ratio*150
+			if(HARD)
+				success_weights = list(0.66, 0.8, 1, 1.25)
+				target_weight = success_ratio*200
+			if(IMPOSSIBLE) //YOU SHALL NOT PASS
+				success_weights = list(0.5, 0.75, 1.2, 2)
+				target_weight = success_ratio*300
+
+		for(var/i = 1, i <= 4, i++)
+		//Iterate through the success rates, and determine the weights to chose based on the highest to
+		//	the lowest to multiply it by the proper success ratio.
+			var/weight = max(ordered_success)
+			ordered_success -= weight
+			if(weight == steal_success)
+				steal_weight *= steal_success*success_weights[i]
+			else if(weight == frame_success)
+				frame_weight *= frame_success*success_weights[i]
+			else if(weight == protect_success)
+				protect_weight *= protect_success*success_weights[i]
+			else if(weight == kill_success)
+				kill_weight *= kill_success*success_weights[i]
+
+		var/total_weights = kill_weight + protect_weight + frame_weight + steal_weight
+		frame_weight = round(frame_weight/total_weights)
+		kill_weight = round(kill_weight/total_weights)
+		steal_weight = round(steal_weight/total_weights)
+		//Protect is whatever is left over.
+
+	var/steal_range = steal_weight
+	var/frame_range = frame_weight + steal_range
+	var/kill_range = kill_weight + frame_range
+	//Protect is whatever is left over.
+
+	while(total_weight < target_weight)
+		var/selectobj = rand(1,100)	//Randomly determine the type of objective to be given.
+		if(!length(killobjectives) || !length(protectobjectives)|| !length(frameobjectives))	//If any of these lists are empty, just give them theft objectives.
+			var/datum/objective/objective = pickweight(theftobjectives)
 			chosenobjectives += objective
-			totalweight += objective.weight
+			total_weight += objective.points
 			theftobjectives -= objective
 		else switch(selectobj)
-			if(1 to 55)		//Theft Objectives (55% chance)
-				var/datum/objective/objective = pick(theftobjectives)
+			if(1 to steal_range)
+				if(!theftobjectives.len)
+					continue
+				var/datum/objective/objective = pickweight(theftobjectives)
 				for(1 to 10)
-					if(objective.weight + totalweight <= 110)
+					if(objective.points + total_weight <= 100 || !theftobjectives.len)
 						break
-					objective = pick(theftobjectives)
+					theftobjectives -= objective
+					objective = pickweight(theftobjectives)
+				if(!objective && !theftobjectives.len)
+					continue
 				chosenobjectives += objective
-				totalweight += objective.weight
+				total_weight += objective.points
 				theftobjectives -= objective
-			if(56 to 92)	//Assassination Objectives (37% chance)
-				var/datum/objective/assassinate/objective = pick(killobjectives)
+			if(steal_range + 1 to frame_range)	//Framing Objectives (3% chance)
+				if(!frameobjectives.len)
+					continue
+				var/datum/objective/objective = pickweight(frameobjectives)
 				for(1 to 10)
-					if(objective.weight + totalweight <= 110)
+					if(objective.points + total_weight <= 100 || !frameobjectives.len)
 						break
-					objective = pick(killobjectives)
+					frameobjectives -= objective
+					objective = pickweight(frameobjectives)
+				if(!objective && !frameobjectives.len)
+					continue
+				for(var/datum/objective/protection/conflicttest in chosenobjectives)	//Check to make sure we aren't telling them to Assassinate somebody they need to Protect.
+					if(conflicttest.target == objective.target)
+						conflict = 1
+						break
+				for(var/datum/objective/assassinate/conflicttest in chosenobjectives)	//Check to make sure we aren't telling them to Protect somebody they need to Assassinate.
+					if(conflicttest.target == objective.target)
+						conflict = 1
+						break
+				if(!conflict)
+					chosenobjectives += objective
+					total_weight += objective.points
+				frameobjectives -= objective
+				conflict = 0
+			if(frame_range + 1 to kill_range)
+				if(!killobjectives.len)
+					continue
+				var/datum/objective/assassinate/objective = pickweight(killobjectives)
+				world << objective
+				for(1 to 10)
+					if(objective.points + total_weight <= 100 || !killobjectives.len)
+						break
+					killobjectives -= objective
+					objective = pickweight(killobjectives)
+				if(!objective && !killobjectives.len)
+					continue
 				for(var/datum/objective/protection/conflicttest in chosenobjectives)	//Check to make sure we aren't telling them to Assassinate somebody they need to Protect.
 					if(conflicttest.target == objective.target)
 						conflict = 1
@@ -81,24 +195,20 @@
 						break
 				if(!conflict)
 					chosenobjectives += objective
-					totalweight += objective.weight
-					killobjectives -= objective
+					total_weight += objective.points
+				killobjectives -= objective
 				conflict = 0
-			if(93 to 95)	//Framing Objectives (3% chance)
-				var/datum/objective/objective = pick(frameobjectives)
+			if(kill_range + 1 to 100)	//Protection Objectives (5% chance)
+				if(!protectobjectives.len)
+					continue
+				var/datum/objective/protection/objective = pickweight(protectobjectives)
 				for(1 to 10)
-					if(objective.weight + totalweight <= 110)
+					if(objective.points + total_weight <= 100 || !protectobjectives.len)
 						break
-					objective = pick(frameobjectives)
-				chosenobjectives += objective
-				totalweight += objective.weight
-				frameobjectives -= objective
-			if(96 to 100)	//Protection Objectives (5% chance)
-				var/datum/objective/protection/objective = pick(protectobjectives)
-				for(1 to 10)
-					if(objective.weight + totalweight <= 110)
-						break
-					objective = pick(protectobjectives)
+					protectobjectives -= objective
+					objective = pickweight(protectobjectives)
+				if(!objective || !protectobjectives.len)
+					continue
 				for(var/datum/objective/assassinate/conflicttest in chosenobjectives)	//Check to make sure we aren't telling them to Protect somebody they need to Assassinate.
 					if(conflicttest.target == objective.target)
 						conflict = 1
@@ -109,19 +219,11 @@
 						break
 				if(!conflict)
 					chosenobjectives += objective
-					totalweight += objective.weight
-					protectobjectives -= objective
+					total_weight += objective.points
+				protectobjectives -= objective
 				conflict = 0
 
-	var/hasendgame = 0
-	for(var/datum/objective/o in chosenobjectives)
-		if(o.type == /datum/objective/hijack || o.type == /datum/objective/escape)
-			hasendgame = 1
-			break
-	for(var/datum/objective/o in chosenobjectives)
-		if(o.explanation_text == "Free Objective")
-			del(o) //Cleaning up any sillies.
-	if(hasendgame == 0)
+	if(!locate(/datum/objective/hijack) in chosenobjectives && !locate(/datum/objective/escape) in chosenobjectives)
 		if(hijack)
 			chosenobjectives += new /datum/objective/hijack(null,job)
 		else
@@ -134,18 +236,21 @@ datum
 		var/datum/mind/target
 		var/explanation_text = "text not set"
 		var/job
-//		var/points = INFINITY //If this isn't set to something else, the objective is bugged and should be ignored
+		var/points = INFINITY //If this isn't set to something else, the objective is bugged and should be ignored
 		var/weight = INFINITY
 
 		New(var/text,var/joba)
 			if(text)
 				src.explanation_text = text
 			job=joba
-			weight = get_points(job)
+			weight = get_weight(job)
+			points = get_points(job)
 
 		proc/check_completion()
 			return 1
 		proc/get_points(var/job)
+			return INFINITY
+		proc/get_weight(var/job)
 			return INFINITY
 		proc/find_target_by_role(role, role_type=0)//Option sets either to check assigned role or special role. Default to assigned.
 			for(var/datum/mind/possible_target in ticker.minds)
@@ -162,7 +267,7 @@ datum
 				explanation_text = "Frame [target.current.real_name], the [target.assigned_role] for a crime and make sure they are arrested and brought back to the Centcom station alive.  We'll handle the rest from there."
 
 			check_completion()
-				if(emergency_shuttle.location<2)
+				if(!emergency_shuttle.returned())
 					return 0
 				if(target.current.stat == 2)
 					return 0
@@ -179,19 +284,25 @@ datum
 
 			get_points()
 				if(target)
+					var/difficulty = GetRank(target.assigned_role) + 1
 					switch(GetRank(job))
 						if(4)
-							return 30
+							return 20*difficulty
 						if(3)
-							return 40
+							return 30*difficulty
 						if(2)
-							return 50
+							return 40*difficulty
 						if(1)
-							return 55
+							return 55*difficulty
 						if(0)
-							return 60
+							return 60*difficulty
 				else
 					return INFINITY
+
+			get_weight()
+				if(target)
+					return 1
+				return 0
 
 
 		protection
@@ -199,10 +310,10 @@ datum
 				target = targeta
 				job = joba
 				weight = get_points(job)
-				explanation_text = "[target.current.real_name], the [target.assigned_role] is a relative of a high ranking Syndicate Leader.  Make sure they get off the ship safely, while minimizing intervention."
+				explanation_text = "[target.current.real_name], the [target.assigned_role] is a [pick("relative of a","friend of a","") + pick("high ranking","important","well-liked")] mercenary [pick("Leader","Officer","Agent","sympathiser")].  Make sure they get off the station safely, while minimizing intervention."
 
 			check_completion()
-				if(emergency_shuttle.location<2)
+				if(!emergency_shuttle.returned())
 					return 0
 
 				if(target.current.stat == 2)
@@ -218,7 +329,15 @@ datum
 				return 0
 
 			get_points()
-				return 30
+				if(target)
+					return 30
+				else
+					return INFINITY
+
+			get_weight()
+				if(target)
+					return 1
+				return 0
 
 			find_target_by_role(role, role_type=0)
 				..(role, role_type)
@@ -235,7 +354,7 @@ datum
 				target = targeta
 				job = joba
 				weight = get_points(job)
-				explanation_text = "Assassinate [target.current.real_name], the [target.assigned_role]."
+				explanation_text = "Assassinate [target.current.real_name], the [target.role_alt_title ? target.role_alt_title : target.assigned_role]."
 
 			check_completion()
 				if(target && target.current)
@@ -247,19 +366,25 @@ datum
 					return 1
 			get_points()
 				if(target)
+					var/difficulty = GetRank(target.assigned_role) + 1
 					switch(GetRank(job))
 						if(4)
-							return 30
+							return 20*difficulty
 						if(3)
-							return 40
+							return 30*difficulty
 						if(2)
-							return 50
+							return 40*difficulty
 						if(1)
-							return 55
+							return 55*difficulty
 						if(0)
-							return 60
+							return 60*difficulty
 				else
 					return 0
+
+			get_weight()
+				if(target)
+					return 1
+				return 0
 
 			find_target_by_role(var/role)
 				for(var/datum/mind/possible_target in ticker.minds)
@@ -268,7 +393,7 @@ datum
 						break
 
 				if(target && target.current)
-					explanation_text = "Assassinate [target.current.real_name], the [target.assigned_role]."
+					explanation_text = "Assassinate [target.current.real_name], the [target.role_alt_title ? target.role_alt_title : target.assigned_role]."
 				else
 					explanation_text = "Free Objective"
 
@@ -286,7 +411,7 @@ datum
 					target = pick(possible_targets)
 
 				if(target && target.current)
-					explanation_text = "Assassinate [target.current.real_name], the [target.assigned_role]."
+					explanation_text = "Assassinate [target.current.real_name], the [target.role_alt_title ? target.role_alt_title : target.assigned_role]."
 				else
 					explanation_text = "Free Objective"
 
@@ -327,26 +452,32 @@ datum
 
 			get_points()
 				if(target)
-					switch(GetRank(owner.assigned_role))
+					var/difficulty = GetRank(target.assigned_role) + 1
+					switch(GetRank(job))
 						if(4)
-							return 30
+							return 20*difficulty
 						if(3)
-							return 40
+							return 30*difficulty
 						if(2)
-							return 50
+							return 40*difficulty
 						if(1)
-							return 55
+							return 55*difficulty
 						if(0)
-							return 60
+							return 60*difficulty
 				else
-					return 0
+					return INFINITY
+
+			get_weight()
+				if(target)
+					return 1
+				return 0
 
 
 		hijack
 			explanation_text = "Hijack the emergency shuttle by escaping alone."
 
 			check_completion()
-				if(emergency_shuttle.location<2)
+				if(!emergency_shuttle.returned())
 					return 0
 
 				if(!owner.current || owner.current.stat == 2)
@@ -374,12 +505,14 @@ datum
 					if(4)
 						return 35
 
+			get_weight(var/job)
+				return 1
 
 		escape
 			explanation_text = "Escape on the shuttle alive, without being arrested."
 
 			check_completion()
-				if(emergency_shuttle.location<2)
+				if(!emergency_shuttle.returned())
 					return 0
 
 				if(!owner.current || owner.current.stat ==2)
@@ -399,6 +532,9 @@ datum
 			get_points()
 				return INFINITY
 
+			get_weight(var/job)
+				return 1
+
 
 		survive
 			explanation_text = "Stay alive."
@@ -410,6 +546,9 @@ datum
 				return 1
 			get_points()
 				return INFINITY
+
+			get_weight(var/job)
+				return 1
 
 
 		steal
@@ -424,7 +563,7 @@ datum
 
 
 			captainslaser
-				steal_target = /obj/item/weapon/gun/energy/laser/captain
+				steal_target = /obj/item/weapon/gun/energy/captain
 				explanation_text = "Steal the captain's antique laser gun."
 				weight = 20
 
@@ -441,6 +580,12 @@ datum
 						if(4)
 							return 20
 
+				get_weight(var/job)
+					if(GetRank(job) == 4)
+						return 10
+					else
+						return 20
+
 
 			plasmatank
 				steal_target = /obj/item/weapon/tank/plasma
@@ -451,6 +596,16 @@ datum
 					if(job in science_positions || job in command_positions)
 						return 20
 					return 40
+
+				get_weight(var/job)
+					return 20
+
+				check_completion()
+					var/list/all_items = owner.current.get_contents()
+					for(var/obj/item/I in all_items)
+						if(!istype(I, steal_target))	continue//If it's not actually that item.
+						if(I:air_contents:phoron) return 1 //If they got one with plasma
+					return 0
 
 
 			/*Removing this as an objective.  Not necessary to have two theft objectives in the same room.
@@ -492,6 +647,12 @@ datum
 						if(4)
 							return 20
 
+				get_weight(var/job)
+					if(GetRank(job) == 4)
+						return 10
+					else
+						return 20
+
 
 			RCD
 				steal_target = /obj/item/weapon/rcd
@@ -510,6 +671,12 @@ datum
 							return 30
 						if(4)
 							return 20
+
+				get_weight(var/job)
+					if(GetRank(job) == 4)
+						return 10
+					else
+						return 20
 
 
 			/*burger
@@ -532,8 +699,8 @@ datum
 
 
 			jetpack
-				steal_target = /obj/item/weapon/tank/jetpack
-				explanation_text = "Steal a jetpack."
+				steal_target = /obj/item/weapon/tank/jetpack/oxygen
+				explanation_text = "Steal a blue oxygen jetpack."
 				weight = 20
 
 				get_points(var/job)
@@ -549,8 +716,14 @@ datum
 						if(4)
 							return 20
 
+				get_weight(var/job)
+					if(GetRank(job) == 4)
+						return 10
+					else
+						return 20
 
-			magboots
+
+			/*magboots
 				steal_target = /obj/item/clothing/shoes/magboots
 				explanation_text = "Steal a pair of \"NanoTrasen\" brand magboots."
 				weight = 20
@@ -567,6 +740,12 @@ datum
 							return 30
 						if(4)
 							return 20
+
+				get_weight(var/job)
+					if(GetRank(job) == 4)
+						return 10
+					else
+						return 20*/
 
 
 			blueprints
@@ -587,6 +766,12 @@ datum
 						if(4)
 							return 20
 
+				get_weight(var/job)
+					if(GetRank(job) == 4)
+						return 10
+					else
+						return 20
+
 
 			voidsuit
 				steal_target = /obj/item/clothing/suit/space/nasavoid
@@ -605,6 +790,9 @@ datum
 							return 30
 						if(4)
 							return 20
+
+				get_weight(var/job)
+					return 20
 
 
 			nuke_disk
@@ -625,6 +813,12 @@ datum
 						if(4)
 							return 25
 
+				get_weight(var/job)
+					if(GetRank(job) == 4)
+						return 10
+					else
+						return 20
+
 			nuke_gun
 				steal_target = /obj/item/weapon/gun/energy/gun/nuclear
 				explanation_text = "Steal a nuclear powered gun."
@@ -642,6 +836,9 @@ datum
 							return 75
 						if(4)
 							return 75
+
+				get_weight(var/job)
+					return 2
 
 			diamond_drill
 				steal_target = /obj/item/weapon/pickaxe/diamonddrill
@@ -661,6 +858,9 @@ datum
 						if(4)
 							return 75
 
+				get_weight(var/job)
+					return 2
+
 			boh
 				steal_target = /obj/item/weapon/storage/backpack/holding
 				explanation_text = "Steal a \"bag of holding.\""
@@ -678,6 +878,9 @@ datum
 							return 75
 						if(4)
 							return 75
+
+				get_weight(var/job)
+					return 2
 
 			hyper_cell
 				steal_target = /obj/item/weapon/cell/hyper
@@ -697,6 +900,9 @@ datum
 						if(4)
 							return 75
 
+				get_weight(var/job)
+					return 2
+
 			lucy
 				steal_target = /obj/item/stack/sheet/diamond
 				explanation_text = "Steal 10 diamonds."
@@ -715,12 +921,17 @@ datum
 						if(4)
 							return 75
 
+				get_weight(var/job)
+					return 2
+
 				check_completion()
 					var/target_amount = 10
 					var/found_amount = 0.0//Always starts as zero.
 					for(var/obj/item/I in owner.current.get_contents())
-						if(!istype(I, steal_target))	continue//If it's not actually that item.
-						found_amount += I:amount
+						if(!istype(I, steal_target))
+							continue//If it's not actually that item.
+						var/obj/item/stack/sheet/diamond/D = I
+						found_amount += D.get_amount()
 					return found_amount>=target_amount
 
 			gold
@@ -741,12 +952,17 @@ datum
 						if(4)
 							return 70
 
+				get_weight(var/job)
+					return 2
+
 				check_completion()
 					var/target_amount = 50
 					var/found_amount = 0.0//Always starts as zero.
 					for(var/obj/item/I in owner.current.get_contents())
-						if(!istype(I, steal_target))	continue//If it's not actually that item.
-						found_amount += I:amount
+						if(!istype(I, steal_target))
+							continue//If it's not actually that item.
+						var/obj/item/stack/sheet/gold/G = I
+						found_amount += G.get_amount()
 					return found_amount>=target_amount
 
 			uranium
@@ -767,12 +983,17 @@ datum
 						if(4)
 							return 70
 
+				get_weight(var/job)
+					return 2
+
 				check_completion()
 					var/target_amount = 25
 					var/found_amount = 0.0//Always starts as zero.
 					for(var/obj/item/I in owner.current.get_contents())
-						if(!istype(I, steal_target))	continue//If it's not actually that item.
-						found_amount += I:amount
+						if(!istype(I, steal_target))
+							continue//If it's not actually that item.
+						var/obj/item/stack/sheet/uranium/U = I
+						found_amount += U.get_amount()
 					return found_amount>=target_amount
 
 
@@ -797,7 +1018,7 @@ datum
 			*/
 			cyborg
 				steal_target = /obj/item/robot_parts/robot_suit
-				explanation_text = "Steal a completed cyborg shell (no brain)"
+				explanation_text = "Steal a completed robot shell (no brain)"
 				weight = 30
 
 				get_points(var/job)
@@ -819,6 +1040,9 @@ datum
 							if(istype(objective,/obj/item/robot_parts/robot_suit) && objective.check_completion())
 								return 1
 						return 0
+
+				get_weight(var/job)
+					return 20
 			AI
 				steal_target = /obj/structure/AIcore
 				explanation_text = "Steal a finished AI, either by intellicard or stealing the whole construct."
@@ -836,6 +1060,9 @@ datum
 							return 30
 						if(4)
 							return 20
+
+				get_weight(var/job)
+					return 15
 
 				check_completion()
 					if(steal_target)
@@ -878,6 +1105,9 @@ datum
 						else
 							return 0
 
+				get_weight(var/job)
+					return 20
+
 
 			pacid
 				steal_target = /datum/reagent/pacid
@@ -904,8 +1134,12 @@ datum
 						else
 							return 0
 
+				get_weight(var/job)
+					return 20
+
 
 			reagent
+				weight = 20
 				var/target_name
 				New(var/text,var/joba)
 					..()
@@ -957,6 +1191,33 @@ datum
 						else
 							return 0
 
+				get_weight(var/job)
+					return 20
+
+			cash	//must be in credits - atm and coins don't count
+				var/steal_amount = 2000
+				explanation_text = "Beg, borrow or steal 2000 credits."
+				weight = 20
+
+				New(var/text,var/joba)
+					..(text,joba)
+					steal_amount = 1250 + rand(0,3750)
+					explanation_text = "Beg, borrow or steal [steal_amount] credits."
+
+				get_points(var/job)
+					return 10 + 25 * round(steal_amount / 5000)
+
+				check_completion()
+					var/held_credits = 0
+					for(var/obj/item/weapon/spacecash/M in owner.current.get_contents())
+						held_credits += M.worth
+					if(held_credits >= steal_amount)
+						return 1
+					return 0
+
+				get_weight(var/job)
+					return 20
+
 
 		nuclear
 			explanation_text = "Destroy the station with a nuclear device."
@@ -969,7 +1230,7 @@ datum
 			check_completion()
 				if(!istype(owner.current, /mob/living/silicon))
 					return 0
-				if(emergency_shuttle.location<2)
+				if(!emergency_shuttle.returned())
 					return 0
 				if(!owner.current)
 					return 0
@@ -984,10 +1245,14 @@ datum
 				return 1
 
 		decapitate
+			New(var/text,var/joba,var/datum/mind/targeta)
+				target = targeta
+				job = joba
+				explanation_text = "Remove and recover the head of [target.current.real_name], the [target.assigned_role]."
 			proc/find_target()
 				..()
 				if(target && target.current)
-					explanation_text = "[target.current.real_name], the [target.role_alt_title ? target.role_alt_title : target.assigned_role], has defied us for the last time.  Make an example of him, and bring us his severed head."
+					explanation_text = "[target.current.real_name], the [target.role_alt_title ? target.role_alt_title : target.assigned_role], has defied us for the last time.  Make an example of [target.current.gender == MALE ? "him" : target.current.gender == FEMALE ? "her" : "them"], and bring us [target.current.gender == MALE ? "his" : target.current.gender == FEMALE ? "her" : "their"] severed head."
 				else
 					explanation_text = "Free Objective"
 				return target
@@ -996,7 +1261,7 @@ datum
 			find_target_by_role(role, role_type=0)
 				..(role, role_type)
 				if(target && target.current)
-					explanation_text = "[target.current.real_name], the [target.role_alt_title ? target.role_alt_title : (!role_type ? target.assigned_role : target.special_role)], has defied us for the last time.  Make an example of him, and bring us his severed head."
+					explanation_text = "[target.current.real_name], the [target.role_alt_title ? target.role_alt_title : (!role_type ? target.assigned_role : target.special_role)], has defied us for the last time.  Make an example of [target.current.gender == MALE ? "him" : target.current.gender == FEMALE ? "her" : "them"], and bring us [target.current.gender == MALE ? "his" : target.current.gender == FEMALE ? "her" : "their"] severed head."
 				else
 					explanation_text = "Free Objective"
 				return target
@@ -1039,6 +1304,20 @@ datum
 				else
 					return 0
 
+		meme_attune
+			var/target_amount
+			proc/gen_amount_goal(var/lowbound = 4, var/highbound = 6)
+				target_amount = rand (lowbound,highbound)
+
+				explanation_text = "Attune [target_amount] humanoid brains."
+				return target_amount
+
+			check_completion()
+				if(owner && owner.current && istype(owner.current,/mob/living/parasite/meme) && (owner.current:indoctrinated.len >= target_amount))
+					return 1
+				else
+					return 0
+
 		download
 			var/target_amount
 			proc/gen_amount_goal()
@@ -1052,11 +1331,13 @@ datum
 					return 0
 				if(!owner.current || owner.current.stat == 2)
 					return 0
-				if(!(istype(owner.current:wear_suit, /obj/item/clothing/suit/space/space_ninja)&&owner.current:wear_suit:s_initialized))
-					return 0
+
 				var/current_amount
-				var/obj/item/clothing/suit/space/space_ninja/S = owner.current:wear_suit
-				if(!S.stored_research.len)
+				var/obj/item/weapon/rig/S
+				if(istype(owner.current,/mob/living/carbon/human))
+					var/mob/living/carbon/human/H = owner.current
+					S = H.back
+				if(!S || !istype(S) || !S.stored_research.len)
 					return 0
 				else
 					for(var/datum/tech/current_data in S.stored_research)
@@ -1066,6 +1347,11 @@ datum
 
 
 		debrain//I want braaaainssss
+			New(var/text,var/joba,var/datum/mind/targeta)
+				target = targeta
+				job = joba
+				explanation_text = "Remove and recover the brain of [target.current.real_name], the [target.assigned_role]."
+
 			proc/find_target()
 				..()
 				if(target && target.current)
@@ -1092,7 +1378,7 @@ datum
 				var/list/all_items = owner.current.get_contents()
 				for(var/obj/item/device/mmi/mmi in all_items)
 					if(mmi.brainmob&&mmi.brainmob.mind==target)	return 1
-				for(var/obj/item/brain/brain in all_items)
+				for(var/obj/item/organ/brain/brain in all_items)
 					if(brain.brainmob&&brain.brainmob.mind==target)	return 1
 				return 0
 
@@ -1120,7 +1406,7 @@ datum
 					var/turf/T = get_turf(target.current)
 					if(target.current.stat == 2)
 						return 1
-					else if((T) && (T.z != 1))//If they leave the station they count as dead for this
+					else if((T) && (isNotStationLevel(T.z)))//If they leave the station they count as dead for this
 						return 2
 					else
 						return 0
@@ -1164,3 +1450,42 @@ datum
 				if(captured_amount<target_amount)
 					return 0
 				return 1
+
+datum/objective/silence
+	explanation_text = "Do not allow anyone to escape the station.  Only allow the shuttle to be called when everyone is dead and your story is the only one left."
+
+	check_completion()
+		if(!emergency_shuttle.returned())
+			return 0
+
+		var/area/shuttle = locate(/area/shuttle/escape/centcom)
+		var/area/pod1 =    locate(/area/shuttle/escape_pod1/centcom)
+		var/area/pod2 =    locate(/area/shuttle/escape_pod2/centcom)
+		var/area/pod3 =    locate(/area/shuttle/escape_pod3/centcom)
+		var/area/pod4 =    locate(/area/shuttle/escape_pod5/centcom)
+
+		for(var/mob/living/player in world)
+			if (player == owner.current)
+				continue
+			if (player.mind)
+				if (player.stat != 2)
+					if (get_turf(player) in shuttle)
+						return 0
+					if (get_turf(player) in pod1)
+						return 0
+					if (get_turf(player) in pod2)
+						return 0
+					if (get_turf(player) in pod3)
+						return 0
+					if (get_turf(player) in pod4)
+						return 0
+		return 1
+
+#undef FRAME_PROBABILITY
+#undef THEFT_PROBABILITY
+#undef KILL_PROBABILITY
+#undef PROTECT_PROBABILITY
+#undef LENIENT
+#undef NORMAL
+#undef HARD
+#undef IMPOSSIBLE
