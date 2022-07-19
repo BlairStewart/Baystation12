@@ -56,34 +56,49 @@
 /obj/item/clothing/shoes/orange
 	name = "orange shoes"
 	icon_state = "orange"
-	var/obj/item/weapon/handcuffs/chained = null
 
-/obj/item/clothing/shoes/orange/proc/attach_cuffs(var/obj/item/weapon/handcuffs/cuffs, mob/user as mob)
-	if (src.chained) return
+/obj/item/clothing/shoes/flats
+	name = "flats"
+	desc = "Sleek flats."
+	icon_state = "flatswhite"
 
-	user.drop_item()
-	cuffs.loc = src
-	src.chained = cuffs
-	src.slowdown = 15
-	src.icon_state = "orange1"
+/obj/item/clothing/shoes/flats/black
+	name = "black flats"
+	color = COLOR_GRAY15
 
-/obj/item/clothing/shoes/orange/proc/remove_cuffs(mob/user as mob)
-	if (!src.chained) return
+/obj/item/clothing/shoes/hightops
+	name = "white high tops"
+	desc = "A pair of shoes that extends past the ankle. Based on a centuries-old, timeless design."
+	icon_state = "whitehi"
 
-	user.put_in_hands(src.chained)
-	src.chained.add_fingerprint(user)
+/obj/item/clothing/shoes/hightops/red
+	name = "red high tops"
+	icon_state = "redhi"
 
-	src.slowdown = initial(slowdown)
-	src.icon_state = "orange"
-	src.chained = null
+/obj/item/clothing/shoes/hightops/brown
+	name = "brown high tops"
+	icon_state = "brownhi"
 
-/obj/item/clothing/shoes/orange/attack_self(mob/user as mob)
-	..()
-	remove_cuffs(user)
+/obj/item/clothing/shoes/hightops/black
+	name = "black high tops"
+	icon_state = "blackhi"
 
-/obj/item/clothing/shoes/orange/attackby(H as obj, mob/user as mob)
-	..()
-	if (istype(H, /obj/item/weapon/handcuffs))
-		attach_cuffs(H, user)
+/obj/item/clothing/shoes/hightops/orange
+	name = "orange high tops"
+	icon_state = "orangehi"
 
+/obj/item/clothing/shoes/hightops/blue
+	name = "blue high tops"
+	icon_state = "bluehi"
 
+/obj/item/clothing/shoes/hightops/green
+	name = "green high tops"
+	icon_state = "greenhi"
+
+/obj/item/clothing/shoes/hightops/purple
+	name = "purple high tops"
+	icon_state = "purplehi"
+
+/obj/item/clothing/shoes/hightops/yellow
+	name = "yellow high tops"
+	icon_state = "yellowhi"

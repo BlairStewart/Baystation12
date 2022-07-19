@@ -2,21 +2,19 @@
 	if(local_transmit)
 		if (src.client)
 			if(client.prefs.muted & MUTE_IC)
-				src << "You cannot send IC messages (muted)."
-				return 0
-			if (src.client.handle_spam_prevention(message,MUTE_IC))
+				to_chat(src, "You cannot send IC messages (muted).")
 				return 0
 
 		message = sanitize(message)
 
-		if (stat == 2)
+		if (stat == DEAD)
 			return say_dead(message)
 
-		if(copytext(message,1,2) == "*")
+		if(copytext_char(message,1,2) == get_prefix_key(/decl/prefix/custom_emote))
 			return emote(copytext(message,2))
 
-		if(copytext(message,1,2) == ";")
-			var/datum/language/L = all_languages["Drone Talk"]
+		if(copytext_char(message,1,2) == get_prefix_key(/decl/prefix/radio_main_channel))
+			var/datum/language/L = all_languages[LANGUAGE_DRONE_GLOBAL]
 			if(istype(L))
 				return L.broadcast(src,trim(copytext(message,2)))
 
@@ -29,12 +27,12 @@
 
 		for(var/mob/living/silicon/D in listeners)
 			if(D.client && D.local_transmit)
-				D << "<b>[src]</b> transmits, \"[message]\""
+				to_chat(D, "<b>[src]</b> transmits, \"[message]\"")
 
-		for (var/mob/M in player_list)
+		for (var/mob/M in GLOB.player_list)
 			if (istype(M, /mob/new_player))
 				continue
-			else if(M.stat == 2 &&  M.client.prefs.toggles & CHAT_GHOSTEARS)
-				if(M.client) M << "<b>[src]</b> transmits, \"[message]\""
+			else if(M.stat == DEAD && M.get_preference_value(/datum/client_preference/ghost_ears) == GLOB.PREF_ALL_SPEECH)
+				if(M.client) to_chat(M, "<b>[src]</b> transmits, \"[message]\"")
 		return 1
 	return ..(message, 0)

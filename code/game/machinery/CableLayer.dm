@@ -3,7 +3,7 @@
 
 	icon = 'icons/obj/stationobjs.dmi'
 	icon_state = "pipe_d"
-	density = 1
+	density = TRUE
 	var/obj/structure/cable/last_piece
 	var/obj/item/stack/cable_coil/cable
 	var/max_cable = 100
@@ -18,25 +18,25 @@
 	..()
 	layCable(new_turf,M_Dir)
 
-/obj/machinery/cablelayer/attack_hand(mob/user as mob)
-	if(!cable&&!on)
-		user << "<span class='warning'>\The [src] doesn't have any cable loaded.</span>"
-		return
-	on=!on
+/obj/machinery/cablelayer/physical_attack_hand(mob/user)
+	if(!cable && !on)
+		to_chat(user, "<span class='warning'>\The [src] doesn't have any cable loaded.</span>")
+		return TRUE
+	on = !on
 	user.visible_message("\The [user] [!on?"dea":"a"]ctivates \the [src].", "You switch [src] [on? "on" : "off"]")
-	return
+	return TRUE
 
 /obj/machinery/cablelayer/attackby(var/obj/item/O as obj, var/mob/user as mob)
 	if(istype(O, /obj/item/stack/cable_coil))
 
 		var/result = load_cable(O)
 		if(!result)
-			user << "<span class='warning'>\The [src]'s cable reel is full.</span>"
+			to_chat(user, "<span class='warning'>\The [src]'s cable reel is full.</span>")
 		else
-			user << "You load [result] lengths of cable into [src]."
+			to_chat(user, "You load [result] lengths of cable into [src].")
 		return
 
-	if(istype(O, /obj/item/weapon/wirecutters))
+	if(isWirecutter(O))
 		if(cable && cable.amount)
 			var/m = round(input(usr,"Please specify the length of cable to cut","Cut cable",min(cable.amount,30)) as num, 1)
 			m = min(m, cable.amount)
@@ -47,11 +47,11 @@
 				var/obj/item/stack/cable_coil/CC = new (get_turf(src))
 				CC.amount = m
 		else
-			usr << "<span class='warning'>There's no more cable on the reel.</span>"
+			to_chat(usr, "<span class='warning'>There's no more cable on the reel.</span>")
 
 /obj/machinery/cablelayer/examine(mob/user)
-	..()
-	user << "\The [src]'s cable reel has [cable.amount] length\s left."
+	. = ..()
+	to_chat(user, "\The [src]'s cable reel has [cable.amount] length\s left.")
 
 /obj/machinery/cablelayer/proc/load_cable(var/obj/item/stack/cable_coil/CC)
 	if(istype(CC) && CC.amount)
@@ -74,7 +74,7 @@
 		visible_message("A red light flashes on \the [src].")
 		return
 	cable.use(amount)
-	if(deleted(cable)) 
+	if(QDELETED(cable))
 		cable = null
 	return 1
 
@@ -105,13 +105,13 @@
 	NC.cableColor("red")
 	NC.d1 = 0
 	NC.d2 = fdirn
-	NC.updateicon()
+	NC.update_icon()
 
 	var/datum/powernet/PN
 	if(last_piece && last_piece.d2 != M_Dir)
 		last_piece.d1 = min(last_piece.d2, M_Dir)
 		last_piece.d2 = max(last_piece.d2, M_Dir)
-		last_piece.updateicon()
+		last_piece.update_icon()
 		PN = last_piece.powernet
 
 	if(!PN)

@@ -3,47 +3,37 @@
 /obj/item/bodybag
 	name = "body bag"
 	desc = "A folded bag designed for the storage and transportation of cadavers."
-	icon = 'icons/obj/bodybag.dmi'
+	icon = 'icons/obj/closets/bodybag.dmi'
 	icon_state = "bodybag_folded"
-	w_class = 2.0
+	w_class = ITEM_SIZE_SMALL
+/obj/item/bodybag/attack_self(mob/user)
+	var/obj/structure/closet/body_bag/R = new /obj/structure/closet/body_bag(user.loc)
+	R.add_fingerprint(user)
+	qdel(src)
 
-	attack_self(mob/user)
-		var/obj/structure/closet/body_bag/R = new /obj/structure/closet/body_bag(user.loc)
-		R.add_fingerprint(user)
-		qdel(src)
 
-
-/obj/item/weapon/storage/box/bodybags
+/obj/item/storage/box/bodybags
 	name = "body bags"
 	desc = "This box contains body bags."
 	icon_state = "bodybags"
-	New()
-		..()
-		new /obj/item/bodybag(src)
-		new /obj/item/bodybag(src)
-		new /obj/item/bodybag(src)
-		new /obj/item/bodybag(src)
-		new /obj/item/bodybag(src)
-		new /obj/item/bodybag(src)
-		new /obj/item/bodybag(src)
+	startswith = list(/obj/item/bodybag = 7)
 
 
 /obj/structure/closet/body_bag
 	name = "body bag"
 	desc = "A plastic bag designed for the storage and transportation of cadavers."
-	icon = 'icons/obj/bodybag.dmi'
-	icon_state = "bodybag_closed"
-	icon_closed = "bodybag_closed"
-	icon_opened = "bodybag_open"
+	icon = 'icons/obj/closets/bodybag.dmi'
+	closet_appearance = null
 	open_sound = 'sound/items/zip.ogg'
 	close_sound = 'sound/items/zip.ogg'
 	var/item_path = /obj/item/bodybag
-	density = 0
+	density = FALSE
 	storage_capacity = (MOB_MEDIUM * 2) - 1
 	var/contains_body = 0
+	var/has_label = FALSE
 
-/obj/structure/closet/body_bag/attackby(W as obj, mob/user as mob)
-	if (istype(W, /obj/item/weapon/pen))
+/obj/structure/closet/body_bag/attackby(var/obj/item/W, mob/user as mob)
+	if (istype(W, /obj/item/pen))
 		var/t = input(user, "What would you like the label to be?", text("[]", src.name), null)  as text
 		if (user.get_active_hand() != W)
 			return
@@ -51,18 +41,29 @@
 			return
 		t = sanitizeSafe(t, MAX_NAME_LEN)
 		if (t)
-			src.name = "body bag - "
+			src.SetName("body bag - ")
 			src.name += t
-			src.overlays += image(src.icon, "bodybag_label")
+			has_label = TRUE
 		else
-			src.name = "body bag"
-	//..() //Doesn't need to run the parent. Since when can fucking bodybags be welded shut? -Agouri
+			src.SetName("body bag")
+		src.update_icon()
 		return
-	else if(istype(W, /obj/item/weapon/wirecutters))
-		user << "You cut the tag off the bodybag"
-		src.name = "body bag"
-		src.overlays.Cut()
+	else if(isWirecutter(W))
+		src.SetName("body bag")
+		has_label = FALSE
+		to_chat(user, "You cut the tag off \the [src].")
+		src.update_icon()
 		return
+
+/obj/structure/closet/body_bag/on_update_icon()
+	if(opened)
+		icon_state = "open"
+	else
+		icon_state = "closed_unlocked"
+
+	src.overlays.Cut()
+	if(has_label)
+		src.overlays += image(src.icon, "bodybag_label")
 
 /obj/structure/closet/body_bag/store_mobs(var/stored_units)
 	contains_body = ..()
@@ -70,66 +71,37 @@
 
 /obj/structure/closet/body_bag/close()
 	if(..())
-		density = 0
+		set_density(0)
 		return 1
 	return 0
+
+/obj/structure/closet/body_bag/proc/fold(var/user)
+	if(!(ishuman(user) || isrobot(user)))
+		to_chat(user, SPAN_NOTICE("You lack the dexterity to close \the [name]."))
+		return FALSE
+
+	if(opened)
+		to_chat(user, SPAN_NOTICE("You must close \the [name] before it can be folded."))
+		return FALSE
+
+	if(contents.len)
+		to_chat(user, SPAN_NOTICE("You can't fold \the [name] while it has something inside it."))
+		return FALSE
+
+	visible_message("[user] folds up the [name]")
+	. = new item_path(get_turf(src))
+	qdel(src)
 
 /obj/structure/closet/body_bag/MouseDrop(over_object, src_location, over_location)
 	..()
 	if((over_object == usr && (in_range(src, usr) || usr.contents.Find(src))))
-		if(!ishuman(usr))	return
-		if(opened)	return 0
-		if(contents.len)	return 0
-		visible_message("[usr] folds up the [src.name]")
-		new item_path(get_turf(src))
-		spawn(0)
-			qdel(src)
-		return
+		fold(usr)
 
-/obj/structure/closet/body_bag/update_icon()
-	if(opened)
-		icon_state = icon_opened
-	else
-		if(contains_body > 0)
-			icon_state = "bodybag_closed1"
-		else
-			icon_state = icon_closed
-
-
-/obj/item/bodybag/cryobag
-	name = "stasis bag"
-	desc = "A folded, non-reusable bag designed to prevent additional damage to an occupant at the cost of genetic damage."
-	icon = 'icons/obj/cryobag.dmi'
+/obj/item/robot_rack/body_bag
+	name = "stasis bag rack"
+	desc = "A rack for carrying folded stasis bags and body bags."
+	icon = 'icons/obj/closets/cryobag.dmi'
 	icon_state = "bodybag_folded"
-
-	attack_self(mob/user)
-		var/obj/structure/closet/body_bag/cryobag/R = new /obj/structure/closet/body_bag/cryobag(user.loc)
-		R.add_fingerprint(user)
-		qdel(src)
-
-
-
-/obj/structure/closet/body_bag/cryobag
-	name = "stasis bag"
-	desc = "A non-reusable plastic bag designed to prevent additional damage to an occupant at the cost of genetic damage."
-	icon = 'icons/obj/cryobag.dmi'
-	item_path = /obj/item/bodybag/cryobag
-	store_misc = 0
-	store_items = 0
-	var/used = 0
-
-/obj/structure/closet/body_bag/cryobag/open()
-	. = ..()
-	if(used)
-		var/obj/item/O = new/obj/item(src.loc)
-		O.name = "used stasis bag"
-		O.icon = src.icon
-		O.icon_state = "bodybag_used"
-		O.desc = "Pretty useless now.."
-		qdel(src)
-
-/obj/structure/closet/body_bag/cryobag/MouseDrop(over_object, src_location, over_location)
-	if((over_object == usr && (in_range(src, usr) || usr.contents.Find(src))))
-		if(!ishuman(usr))	return
-		usr << "<span class='warning'>You can't fold that up anymore..</span>"
-	..()
+	object_type = /obj/item/bodybag
+	interact_type = /obj/structure/closet/body_bag
+	capacity = 3

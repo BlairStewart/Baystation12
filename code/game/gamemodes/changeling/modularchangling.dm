@@ -1,7 +1,7 @@
 // READ: Don't use the apostrophe in name or desc. Causes script errors.
 
-var/list/powers = typesof(/datum/power/changeling) - /datum/power/changeling	//needed for the badmin verb for now
-var/list/datum/power/changeling/powerinstances = list()
+var/global/list/powers = typesof(/datum/power/changeling) - /datum/power/changeling	//needed for the badmin verb for now
+var/global/list/datum/power/changeling/powerinstances = list()
 
 /datum/power			//Could be used by other antags too
 	var/name = "Power"
@@ -25,12 +25,6 @@ var/list/datum/power/changeling/powerinstances = list()
 	desc = "We take on the apperance and voice of one we have absorbed."
 	genomecost = 0
 	verbpath = /mob/proc/changeling_transform
-
-/datum/power/changeling/change_species
-	name = "Change Species"
-	desc = "We take on the apperance of a species that we have absorbed."
-	genomecost = 0
-	verbpath = /mob/proc/changeling_change_species
 
 /datum/power/changeling/fakedeath
 	name = "Regenerative Stasis"
@@ -99,19 +93,6 @@ var/list/datum/power/changeling/powerinstances = list()
 	allowduringlesserform = 1
 	verbpath = /mob/proc/changeling_extract_dna_sting
 
-/datum/power/changeling/transformation_sting
-	name = "Transformation Sting"
-	desc = "We silently sting a human, injecting a retrovirus that forces them to transform into another."
-	helptext = "Does not provide a warning to others. The victim will transform much like a changeling would."
-	genomecost = 3
-	verbpath = /mob/proc/changeling_transformation_sting
-
-/datum/power/changeling/paralysis_sting
-	name = "Paralysis Sting"
-	desc = "We silently sting a human, paralyzing them for a short time."
-	genomecost = 8
-	verbpath = /mob/proc/changeling_paralysis_sting
-
 /datum/power/changeling/LSDSting
 	name = "Hallucination Sting"
 	desc = "We evolve the ability to sting a target with a powerful hallunicationary chemical."
@@ -121,15 +102,11 @@ var/list/datum/power/changeling/powerinstances = list()
 
 /datum/power/changeling/DeathSting
 	name = "Death Sting"
-	desc = "We silently sting a human, filling them with potent chemicals. Their rapid death is all but assured."
+	desc = "We sting a human, filling them with potent chemicals. Their rapid death is all but assured, but our crime will be obvious."
+	helptext = "It will be clear to any surrounding witnesses if you use this power."
 	genomecost = 10
 	verbpath = /mob/proc/changeling_DEATHsting
 
-///datum/power/changeling/unfat_sting
-//	name = "Unfat Sting"
-//	desc = "We silently sting a human, forcing them to rapidly metabolize their fat."
-//	genomecost = 1
-//	verbpath = /mob/proc/changeling_unfat_sting
 
 /datum/power/changeling/boost_range
 	name = "Boost Range"
@@ -451,7 +428,7 @@ var/list/datum/power/changeling/powerinstances = list()
 	</body></html>
 	"}
 
-	usr << browse(dat, "window=powers;size=900x480")
+	show_browser(usr, dat, "window=powers;size=900x480")
 
 
 /datum/changeling/Topic(href, href_list)
@@ -476,23 +453,24 @@ var/list/datum/power/changeling/powerinstances = list()
 
 
 	for (var/datum/power/changeling/P in powerinstances)
-		//world << "[P] - [Pname] = [P.name == Pname ? "True" : "False"]"
+//		log_debug("[P] - [Pname] = [P.name == Pname ? "True" : "False"]")
+
 		if(P.name == Pname)
 			Thepower = P
 			break
 
 
 	if(Thepower == null)
-		M.current << "This is awkward.  Changeling power purchase failed, please report this bug to a coder!"
+		to_chat(M.current, "This is awkward.  Changeling power purchase failed, please report this bug to a coder!")
 		return
 
 	if(Thepower in purchasedpowers)
-		M.current << "We have already evolved this ability!"
+		to_chat(M.current, "We have already evolved this ability!")
 		return
 
 
 	if(geneticpoints < Thepower.genomecost)
-		M.current << "We cannot evolve this... yet.  We must acquire more DNA."
+		to_chat(M.current, "We cannot evolve this... yet.  We must acquire more DNA.")
 		return
 
 	geneticpoints -= Thepower.genomecost

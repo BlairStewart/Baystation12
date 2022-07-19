@@ -148,6 +148,10 @@ h4 {
     font-size: 12px;
 }
 
+abbr {
+    border-bottom: .1em dotted;
+}
+
 .white {
     color: white;
     font-weight: bold;
@@ -156,6 +160,11 @@ h4 {
 .good {
     color: #4f7529;
     font-weight: bold;
+}
+
+.mild {
+	color: #cda500;
+	font-weight: bold;
 }
 
 .average {
@@ -235,6 +244,10 @@ div.notice {
     clear: both;
 }
 
+.notice.info {
+    background: url(uiInfoBackground.jpg) 50% 50%;
+}
+
 .itemGroup {
     border: 1px solid #e9c183;
     background: #2c2c2c;
@@ -246,6 +259,7 @@ div.notice {
     width: 100%;
     margin: 4px 0 0 0;
     clear: both;
+	overflow: auto;
 }
 
 .itemContentNarrow, .itemContent {
@@ -306,6 +320,7 @@ div.notice {
     border: 1px solid #40628a;
     padding: 4px;
     margin: 3px 0;
+	overflow: hidden;
 }
 
 .statusDisplayRecords {
@@ -316,6 +331,19 @@ div.notice {
     margin: 3px 0;
     overflow-x: hidden;
     overflow-y: auto;
+}
+
+.statusDisplayComm {
+	width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+	padding-bottom: 4px;
+	border-top: 0 none;
+	border-left: 0 none;
+	border-right: 0 none;
+	border-bottom: 2px inset #40628a;
+    margin: 3px 0;
+	overflow: hidden;
 }
 
 .statusLabel {
@@ -351,7 +379,7 @@ div.notice {
     background: #000000;
 }
 
-.displayBarText {
+.displayBarText, .displayBarVerticalText, .displayBarBeakerText{
     position: absolute;
     top: -2px;
     left: 5px;
@@ -367,6 +395,48 @@ div.notice {
     background: #40628a;
     overflow: hidden;
     float: left;
+}
+
+.displayBarVertical {
+    position: relative;
+    width: 16px;
+    height: 200px;
+    border: 1px solid #666666;
+    float: left;
+    margin: 0 5px 0 0;
+    overflow: hidden;
+	background: #40628a;
+}
+
+.displayBarVerticalFill {
+    width: 100%;
+    height: 0%;
+    overflow: hidden;
+    float: left;
+	background: #000000;
+}
+
+/*used in xenobio2 computer*/
+
+.displayBarBeaker {
+    position: relative;
+    width: 100px;
+    height: 110px;
+    border-right: 2px solid rgb(102, 179, 255);
+	border-left: 2px solid rgb(102, 179, 255);
+	border-bottom: 2px solid rgb(102, 179, 255);
+    float: left;
+    margin: 0 5px 0 0;
+    overflow: hidden;
+	background: #40628a;
+}
+
+.displayBarBeakerFill {
+    width: 100%;
+    height: 0%;
+    overflow: hidden;
+    float: left;
+	background: rgba(153, 204, 255, 0.3);
 }
 
 .displayBarFill.alignRight {
@@ -446,6 +516,10 @@ div.notice {
     float: right;
 }
 
+.floatLeft {
+	float: left;
+}
+
 /* Used in PDA */
 
 .wholeScreen {
@@ -505,7 +579,7 @@ div.notice {
     text-align: center;
 }
 
-table.fixed { 
+table.fixed {
 	table-layout:fixed;
 }
 
@@ -527,6 +601,12 @@ table.pmon td, table.pmon th {
 
 th.command {
     background: #3333FF;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+th.spt {
+    background: #4f4ff2;
     font-weight: bold;
     color: #ffffff;
 }
@@ -561,14 +641,38 @@ th.car {
     color: #ffffff;
 }
 
+th.sup {
+    background: #bb9040;
+    font-weight: bold;
+    color: #ffffff;
+}
+
 th.civ {
     background: #a32800;
     font-weight: bold;
     color: #ffffff;
 }
 
+th.srv {
+    background: #88b764;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+th.exp {
+    background: #68099e;
+    font-weight: bold;
+    color: #ffffff;
+}
+
 th.misc {
     background: #666666;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+th.bot {
+    background: #414249;
     font-weight: bold;
     color: #ffffff;
 }
@@ -588,10 +692,26 @@ th.misc {
 }
 
 .oxyloss {
-    color: blue;
+    color: cyan;
 }
 
 /* 75px width used in power monitoring console buttons */
 .width75btn {
     width: 75px;
+}
+.wideTable tr:nth-child(odd) {
+    background-color: #272727;
+}
+
+/* Candystriped rows for tables */
+.candystripe {
+	background-color: rgba(148, 148, 148, 0.25);
+}
+.candystripe:nth-child(odd) {
+	background-color: rgba(0, 0, 0, 0.16);
+}
+
+.redacted {
+	background-color: black;
+	color: black;
 }

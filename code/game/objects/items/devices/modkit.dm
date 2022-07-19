@@ -5,9 +5,10 @@
 /obj/item/device/modkit
 	name = "hardsuit modification kit"
 	desc = "A kit containing all the needed tools and parts to modify a hardsuit for another user."
+	icon = 'icons/obj/modkit.dmi'
 	icon_state = "modkit"
 	var/parts = MODKIT_FULL
-	var/target_species = "Human"
+	var/target_species = SPECIES_HUMAN
 
 	var/list/permitted_types = list(
 		/obj/item/clothing/head/helmet/space/void,
@@ -22,8 +23,7 @@
 		return	//it shouldn't be null, okay?
 
 	if(!parts)
-		user << "<span class='warning'>This kit has no parts for this modification left.</span>"
-		user.drop_from_inventory(src)
+		to_chat(user, "<span class='warning'>This kit has no parts for this modification left.</span>")
 		qdel(src)
 		return
 
@@ -34,17 +34,17 @@
 
 	var/obj/item/clothing/I = O
 	if (!istype(I) || !allowed)
-		user << "<span class='notice'>[src] is unable to modify that.</span>"
+		to_chat(user, "<span class='notice'>[src] is unable to modify that.</span>")
 		return
 
 	var/excluding = ("exclude" in I.species_restricted)
 	var/in_list = (target_species in I.species_restricted)
 	if (excluding ^ in_list)
-		user << "<span class='notice'>[I] is already modified.</span>"
+		to_chat(user, "<span class='notice'>[I] is already modified.</span>")
 		return
 
 	if(!isturf(O.loc))
-		user << "<span class='warning'>[O] must be safely placed on the ground for modification.</span>"
+		to_chat(user, "<span class='warning'>[O] must be safely placed on the ground for modification.</span>")
 		return
 
 	playsound(user.loc, 'sound/items/Screwdriver.ogg', 100, 1)
@@ -59,14 +59,8 @@
 		parts &= ~MODKIT_SUIT
 
 	if(!parts)
-		user.drop_from_inventory(src)
 		qdel(src)
 
 /obj/item/device/modkit/examine(mob/user)
-	..(user)
-	user << "It looks as though it modifies hardsuits to fit [target_species] users."
-
-/obj/item/device/modkit/tajaran
-	name = "tajaran hardsuit modification kit"
-	desc = "A kit containing all the needed tools and parts to modify a hardsuit for another user. This one looks like it's meant for Tajaran."
-	target_species = "Tajara"
+	. = ..(user)
+	to_chat(user, "It looks as though it modifies hardsuits to fit [target_species] users.")

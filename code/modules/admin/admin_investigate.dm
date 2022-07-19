@@ -23,7 +23,7 @@
 	if(!message)	return
 	var/F = investigate_subject2file(subject)
 	if(!F)	return
-	F << "<small>[time2text(world.timeofday,"hh:mm")] \ref[src] ([x],[y],[z])</small> || [src] [message]<br>"
+	to_chat(F, "<small>[time_stamp()] \ref[src] ([x],[y],[z])</small> || [src] [message]<br>")
 
 //ADMINVERBS
 /client/proc/investigate_show( subject in list("hrefs","notes","singulo","telesci") )
@@ -34,17 +34,12 @@
 		if("singulo", "telesci")			//general one-round-only stuff
 			var/F = investigate_subject2file(subject)
 			if(!F)
-				src << "<font color='red'>Error: admin_investigate: [INVESTIGATE_DIR][subject] is an invalid path or cannot be accessed.</font>"
+				to_chat(src, "<span class='warning'>Error: admin_investigate: [INVESTIGATE_DIR][subject] is an invalid path or cannot be accessed.</span>")
 				return
-			src << browse(F,"window=investigate[subject];size=800x300")
+			show_browser(src, F,"window=investigate[subject];size=800x300")
 
 		if("hrefs")				//persistant logs and stuff
-			if(config && config.log_hrefs)
-				if(href_logfile)
-					src << browse(href_logfile,"window=investigate[subject];size=800x300")
-				else
-					src << "<font color='red'>Error: admin_investigate: No href logfile found.</font>"
-					return
+			if (GLOB.href_logfile)
+				show_browser(src, GLOB.href_logfile, "window=investigate[subject];size=800x300")
 			else
-				src << "<font color='red'>Error: admin_investigate: Href Logging is not on.</font>"
-				return
+				to_chat(src, "<span class='warning'>Error: admin_investigate: Href Logging [config.log_hrefs ? "failed to start" : "is disabled"].</span>")

@@ -1,20 +1,20 @@
 /obj/item/device/spy_bug
 	name = "bug"
 	desc = ""	// Nothing to see here
-	icon = 'icons/obj/weapons.dmi'
+	icon = 'icons/obj/weapons/melee_energy.dmi'
 	icon_state = "eshield0"
 	item_state = "nothing"
-	layer = TURF_LAYER+0.2
+	layer = BELOW_TABLE_LAYER
 
-	flags = CONDUCT
+	obj_flags = OBJ_FLAG_CONDUCTIBLE
 	force = 5.0
-	w_class = 1.0
+	w_class = ITEM_SIZE_TINY
 	slot_flags = SLOT_EARS
 	throwforce = 5.0
 	throw_range = 15
 	throw_speed = 3
 
-	origin_tech = list(TECH_DATA = 1, TECH_ENGINEERING = 1, TECH_ILLEGAL = 3)
+	origin_tech = list(TECH_DATA = 1, TECH_ENGINEERING = 1, TECH_ESOTERIC = 3)
 
 	var/obj/item/device/radio/spy/radio
 	var/obj/machinery/camera/spy/camera
@@ -23,12 +23,19 @@
 	..()
 	radio = new(src)
 	camera = new(src)
+	GLOB.listening_objects += src
 
-/obj/item/device/spy_bug/examine(mob/user)
-	. = ..(user, 0)
-	if(.)
-		user << "It's a tiny camera, microphone, and transmission device in a happy union."
-		user << "Needs to be both configured and brought in contact with monitor device to be fully functional."
+/obj/item/device/spy_bug/Destroy()
+	QDEL_NULL(radio)
+	QDEL_NULL(camera)
+	GLOB.listening_objects -= src
+	return ..()
+
+/obj/item/device/spy_bug/examine(mob/user, distance)
+	. = ..()
+	if(distance <= 0)
+		to_chat(user, "It's a tiny camera, microphone, and transmission device in a happy union.")
+		to_chat(user, "Needs to be both configured and brought in contact with monitor device to be fully functional.")
 
 /obj/item/device/spy_bug/attack_self(mob/user)
 	radio.attack_self(user)
@@ -47,13 +54,12 @@
 /obj/item/device/spy_monitor
 	name = "\improper PDA"
 	desc = "A portable microcomputer by Thinktronic Systems, LTD. Functionality determined by a preprogrammed ROM cartridge."
-	icon = 'icons/obj/pda.dmi'
+	icon = 'icons/obj/modular_pda.dmi'
 	icon_state = "pda"
-	item_state = "electronic"
 
-	w_class = 2.0
+	w_class = ITEM_SIZE_SMALL
 
-	origin_tech = list(TECH_DATA = 1, TECH_ENGINEERING = 1, TECH_ILLEGAL = 3)
+	origin_tech = list(TECH_DATA = 1, TECH_ENGINEERING = 1, TECH_ESOTERIC = 3)
 
 	var/operating = 0
 	var/obj/item/device/radio/spy/radio
@@ -61,12 +67,18 @@
 	var/list/obj/machinery/camera/spy/cameras = new()
 
 /obj/item/device/spy_monitor/New()
+	..()
 	radio = new(src)
+	GLOB.listening_objects += src
 
-/obj/item/device/spy_monitor/examine(mob/user)
-	. = ..(user, 1)
-	if(.)
-		user << "The time '12:00' is blinking in the corner of the screen and \the [src] looks very cheaply made."
+/obj/item/device/spy_monitor/Destroy()
+	GLOB.listening_objects -= src
+	return ..()
+
+/obj/item/device/spy_monitor/examine(mob/user, distance)
+	. = ..()
+	if(distance <= 1)
+		to_chat(user, "The time '12:00' is blinking in the corner of the screen and \the [src] looks very cheaply made.")
 
 /obj/item/device/spy_monitor/attack_self(mob/user)
 	if(operating)
@@ -83,10 +95,10 @@
 
 /obj/item/device/spy_monitor/proc/pair(var/obj/item/device/spy_bug/SB, var/mob/living/user)
 	if(SB.camera in cameras)
-		user << "<span class='notice'>\The [SB] has been unpaired from \the [src].</span>"
+		to_chat(user, "<span class='notice'>\The [SB] has been unpaired from \the [src].</span>")
 		cameras -= SB.camera
 	else
-		user << "<span class='notice'>\The [SB] has been paired with \the [src].</span>"
+		to_chat(user, "<span class='notice'>\The [SB] has been paired with \the [src].</span>")
 		cameras += SB.camera
 
 /obj/item/device/spy_monitor/proc/view_cameras(mob/user)
@@ -109,7 +121,7 @@
 			if(!T || !is_on_same_plane_or_station(T.z, user.z) || !selected_camera.can_use())
 				user.unset_machine()
 				user.reset_view(null)
-				user << "<span class='notice'>[selected_camera] unavailable.</span>"
+				to_chat(user, "<span class='notice'>[selected_camera] unavailable.</span>")
 				sleep(90)
 			else
 				user.set_machine(selected_camera)
@@ -123,8 +135,8 @@
 		return
 
 	if(!cameras.len)
-		user << "<span class='warning'>No paired cameras detected!</span>"
-		user << "<span class='warning'>Bring a bug in contact with this device to pair the camera.</span>"
+		to_chat(user, "<span class='warning'>No paired cameras detected!</span>")
+		to_chat(user, "<span class='warning'>Bring a bug in contact with this device to pair the camera.</span>")
 		return
 
 	return 1
@@ -139,7 +151,7 @@
 
 /obj/machinery/camera/spy/New()
 	..()
-	name = "DV-136ZB #[rand(1000,9999)]"
+	name = "DV-136ZB #[random_id(/obj/machinery/camera/spy, 1000,9999)]"
 	c_tag = name
 
 /obj/machinery/camera/spy/check_eye(var/mob/user as mob)

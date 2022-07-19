@@ -1,27 +1,27 @@
 /obj/structure/bed/chair/wheelchair
 	name = "wheelchair"
-	desc = "You sit in this. Either by will or force."
+	desc = "Now we're getting somewhere."
 	icon_state = "wheelchair"
-	anchored = 0
-	buckle_movable = 1
-
+	anchored = FALSE
+	movement_handlers = list(/datum/movement_handler/deny_multiz, /datum/movement_handler/delay = list(2), /datum/movement_handler/move_relay_self)
 	var/driving = 0
 	var/mob/living/pulling = null
 	var/bloodiness
 
-/obj/structure/bed/chair/wheelchair/update_icon()
+/obj/structure/bed/chair/wheelchair/on_update_icon()
 	return
 
 /obj/structure/bed/chair/wheelchair/set_dir()
 	..()
-	overlays = null
-	var/image/O = image(icon = 'icons/obj/furniture.dmi', icon_state = "w_overlay", layer = FLY_LAYER, dir = src.dir)
+	overlays.Cut()
+	var/image/O = image(icon = 'icons/obj/furniture.dmi', icon_state = "w_overlay", dir = src.dir)
+	O.layer = ABOVE_HUMAN_LAYER
 	overlays += O
 	if(buckled_mob)
 		buckled_mob.set_dir(dir)
 
-/obj/structure/bed/chair/wheelchair/attackby(obj/item/weapon/W as obj, mob/user as mob)
-	if(istype(W, /obj/item/weapon/wrench) || istype(W,/obj/item/stack) || istype(W, /obj/item/weapon/wirecutters))
+/obj/structure/bed/chair/wheelchair/attackby(obj/item/W as obj, mob/user as mob)
+	if(isWrench(W) || istype(W,/obj/item/stack) || isWirecutter(W))
 		return
 	..()
 
@@ -31,7 +31,7 @@
 		if(user==pulling)
 			pulling = null
 			user.pulledby = null
-			user << "<span class='warning'>You lost your grip!</span>"
+			to_chat(user, "<span class='warning'>You lost your grip!</span>")
 		return
 	if(buckled_mob && pulling && user == buckled_mob)
 		if(pulling.stat || pulling.stunned || pulling.weakened || pulling.paralysis || pulling.lying || pulling.restrained())
@@ -49,10 +49,10 @@
 		if(user==pulling)
 			return
 	if(pulling && (get_dir(src.loc, pulling.loc) == direction))
-		user << "<span class='warning'>You cannot go there.</span>"
+		to_chat(user, "<span class='warning'>You cannot go there.</span>")
 		return
 	if(pulling && buckled_mob && (buckled_mob == user))
-		user << "<span class='warning'>You cannot drive while being pushed.</span>"
+		to_chat(user, "<span class='warning'>You cannot drive while being pushed.</span>")
 		return
 
 	// Let's roll
@@ -87,13 +87,10 @@
 	driving = 0
 
 /obj/structure/bed/chair/wheelchair/Move()
-	..()
+	. = ..()
 	if(buckled_mob)
 		var/mob/living/occupant = buckled_mob
 		if(!driving)
-			occupant.buckled = null
-			occupant.Move(src.loc)
-			occupant.buckled = src
 			if (occupant && (src.loc != occupant.loc))
 				if (propelled)
 					for (var/mob/O in src.loc)
@@ -103,7 +100,7 @@
 					unbuckle_mob()
 			if (pulling && (get_dist(src, pulling) > 1))
 				pulling.pulledby = null
-				pulling << "<span class='warning'>You lost your grip!</span>"
+				to_chat(pulling, "<span class='warning'>You lost your grip!</span>")
 				pulling = null
 		else
 			if (occupant && (src.loc != occupant.loc))
@@ -120,7 +117,7 @@
 	if(in_range(src, user))
 		if(!ishuman(user))	return
 		if(user == buckled_mob)
-			user << "<span class='warning'>You realize you are unable to push the wheelchair you sit in.</span>"
+			to_chat(user, "<span class='warning'>You realize you are unable to push the wheelchair you sit in.</span>")
 			return
 		if(!pulling)
 			pulling = user
@@ -128,12 +125,13 @@
 			if(user.pulling)
 				user.stop_pulling()
 			user.set_dir(get_dir(user, src))
-			user << "You grip \the [name]'s handles."
+			to_chat(user, "You grip \the [name]'s handles.")
 		else
-			usr << "You let go of \the [name]'s handles."
+			to_chat(usr, "You let go of \the [name]'s handles.")
 			pulling.pulledby = null
 			pulling = null
-		return
+		return TRUE
+	return FALSE
 
 /obj/structure/bed/chair/wheelchair/Bump(atom/A)
 	..()
@@ -145,30 +143,27 @@
 		if (pulling && (pulling.a_intent == I_HURT))
 			occupant.throw_at(A, 3, 3, pulling)
 		else if (propelled)
-			occupant.throw_at(A, 3, propelled)
+			occupant.throw_at(A, 3, 3)
 
 		var/def_zone = ran_zone()
-		var/blocked = occupant.run_armor_check(def_zone, "melee")
-		occupant.throw_at(A, 3, propelled)
-		occupant.apply_effect(6, STUN, blocked)
-		occupant.apply_effect(6, WEAKEN, blocked)
-		occupant.apply_effect(6, STUTTER, blocked)
-		occupant.apply_damage(10, BRUTE, def_zone)
+		var/blocked = 100 * occupant.get_blocked_ratio(def_zone, DAMAGE_BRUTE, damage = 10)
+		occupant.throw_at(A, 3, 3)
+		occupant.apply_effect(6, EFFECT_STUN, blocked)
+		occupant.apply_effect(6, EFFECT_WEAKEN, blocked)
+		occupant.apply_effect(6, EFFECT_STUTTER, blocked)
+		occupant.apply_damage(10, DAMAGE_BRUTE, def_zone)
 		playsound(src.loc, 'sound/weapons/punch1.ogg', 50, 1, -1)
 		if(istype(A, /mob/living))
 			var/mob/living/victim = A
 			def_zone = ran_zone()
-			blocked = victim.run_armor_check(def_zone, "melee")
-			victim.apply_effect(6, STUN, blocked)
-			victim.apply_effect(6, WEAKEN, blocked)
-			victim.apply_effect(6, STUTTER, blocked)
-			victim.apply_damage(10, BRUTE, def_zone)
+			blocked = 100 * victim.get_blocked_ratio(def_zone, DAMAGE_BRUTE, damage = 10)
+			victim.apply_effect(6, EFFECT_STUN, blocked)
+			victim.apply_effect(6, EFFECT_WEAKEN, blocked)
+			victim.apply_effect(6, EFFECT_STUTTER, blocked)
+			victim.apply_damage(10, DAMAGE_BRUTE, def_zone)
 		if(pulling)
 			occupant.visible_message("<span class='danger'>[pulling] has thrusted \the [name] into \the [A], throwing \the [occupant] out of it!</span>")
-
-			pulling.attack_log += "\[[time_stamp()]\]<font color='red'> Crashed [occupant.name]'s ([occupant.ckey]) [name] into \a [A]</font>"
-			occupant.attack_log += "\[[time_stamp()]\]<font color='orange'> Thrusted into \a [A] by [pulling.name] ([pulling.ckey]) with \the [name]</font>"
-			msg_admin_attack("[pulling.name] ([pulling.ckey]) has thrusted [occupant.name]'s ([occupant.ckey]) [name] into \a [A] (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[pulling.x];Y=[pulling.y];Z=[pulling.z]'>JMP</a>)")
+			admin_attack_log(pulling, occupant, "Crashed their victim into \an [A].", "Was crashed into \an [A].", "smashed into \the [A] using")
 		else
 			occupant.visible_message("<span class='danger'>[occupant] crashed into \the [A]!</span>")
 
@@ -191,3 +186,8 @@
 		pulling = null
 		usr.pulledby = null
 	..()
+
+/proc/equip_wheelchair(mob/living/carbon/human/H) //Proc for spawning in a wheelchair if a new character has no legs. Used in new_player.dm
+	var/obj/structure/bed/chair/wheelchair/W = new(get_turf(H))
+	if(isturf(H.loc))
+		W.buckle_mob(H)

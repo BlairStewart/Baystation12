@@ -1,18 +1,32 @@
 //a docking port based on an airlock
 /obj/machinery/embedded_controller/radio/airlock/docking_port
 	name = "docking port controller"
-	var/datum/computer/file/embedded_program/airlock/docking/airlock_program
-	var/datum/computer/file/embedded_program/docking/airlock/docking_program
+	program = /datum/computer/file/embedded_program/docking/airlock
+	var/display_name			//how would it show up on docking monitoring program, area name + coordinates if unset
 	tag_secure = 1
 
-/obj/machinery/embedded_controller/radio/airlock/docking_port/initialize()
-	..()
-	airlock_program = new/datum/computer/file/embedded_program/airlock/docking(src)
-	docking_program = new/datum/computer/file/embedded_program/docking/airlock(src, airlock_program)
-	program = docking_program
+/obj/machinery/embedded_controller/radio/airlock/docking_port/Initialize()
+	. = ..()
+	if(display_name)
+		var/datum/computer/file/embedded_program/docking/airlock/docking_program = program
+		docking_program.display_name = display_name
 
-/obj/machinery/embedded_controller/radio/airlock/docking_port/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1)
+/obj/machinery/embedded_controller/radio/airlock/docking_port/attackby(obj/item/W, mob/user)
+	if(istype(W,/obj/item/device/multitool)) //give them part of code, would take few tries to get full
+		var/datum/computer/file/embedded_program/docking/airlock/docking_program = program
+		var/code = docking_program.docking_codes
+		if(!code)
+			code = "N/A"
+		else
+			code = stars(code)
+		to_chat(user,"[W]'s screen displays '[code]'")
+	else
+		..()
+
+/obj/machinery/embedded_controller/radio/airlock/docking_port/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/nanoui/master_ui = null, var/datum/topic_state/state = GLOB.default_state)
 	var/data[0]
+	var/datum/computer/file/embedded_program/docking/airlock/docking_program = program
+	var/datum/computer/file/embedded_program/airlock/docking/airlock_program = docking_program.airlock_program
 
 	data = list(
 		"chamber_pressure" = round(airlock_program.memory["chamber_sensor_pressure"]),
@@ -22,53 +36,30 @@
 		"docking_status" = docking_program.get_docking_status(),
 		"airlock_disabled" = !(docking_program.undocked() || docking_program.override_enabled),
 		"override_enabled" = docking_program.override_enabled,
+		"docking_codes" = docking_program.docking_codes,
+		"name" = docking_program.get_name()
 	)
 
-	ui = nanomanager.try_update_ui(user, src, ui_key, ui, data, force_open)
+	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)
 
 	if (!ui)
-		ui = new(user, src, ui_key, "docking_airlock_console.tmpl", name, 470, 290)
+		ui = new(user, src, ui_key, "docking_airlock_console.tmpl", name, 470, 290, state = state)
 		ui.set_initial_data(data)
 		ui.open()
 		ui.set_auto_update(1)
-
-/obj/machinery/embedded_controller/radio/airlock/docking_port/Topic(href, href_list)
-	if(..())
-		return
-
-	usr.set_machine(src)
-	src.add_fingerprint(usr)
-
-	var/clean = 0
-	switch(href_list["command"])	//anti-HTML-hacking checks
-		if("cycle_ext")
-			clean = 1
-		if("cycle_int")
-			clean = 1
-		if("force_ext")
-			clean = 1
-		if("force_int")
-			clean = 1
-		if("abort")
-			clean = 1
-		if("toggle_override")
-			clean = 1
-
-	if(clean)
-		program.receive_user_command(href_list["command"])
-
-	return 1
-
-
 
 //A docking controller for an airlock based docking port
 /datum/computer/file/embedded_program/docking/airlock
 	var/datum/computer/file/embedded_program/airlock/docking/airlock_program
 
-/datum/computer/file/embedded_program/docking/airlock/New(var/obj/machinery/embedded_controller/M, var/datum/computer/file/embedded_program/airlock/docking/A)
-	..(M)
-	airlock_program = A
+/datum/computer/file/embedded_program/docking/airlock/New(var/obj/machinery/embedded_controller/M)
+	..()
+	airlock_program = new(M)
 	airlock_program.master_prog = src
+
+/datum/computer/file/embedded_program/docking/airlock/Destroy()
+	qdel(airlock_program)
+	return ..()
 
 /datum/computer/file/embedded_program/docking/airlock/receive_user_command(command)
 	if (command == "toggle_override")
@@ -76,10 +67,10 @@
 			disable_override()
 		else
 			enable_override()
-		return
+		return TRUE
 
-	..(command)
-	airlock_program.receive_user_command(command)	//pass along to subprograms
+	. = ..(command)
+	. = airlock_program.receive_user_command(command) || .	//pass along to subprograms; bypass shortcircuit
 
 /datum/computer/file/embedded_program/docking/airlock/process()
 	airlock_program.process()
@@ -91,7 +82,7 @@
 
 //tell the docking port to start getting ready for docking - e.g. pressurize
 /datum/computer/file/embedded_program/docking/airlock/prepare_for_docking()
-	airlock_program.begin_cycle_in()
+	airlock_program.begin_dock_cycle()
 
 //are we ready for docking?
 /datum/computer/file/embedded_program/docking/airlock/ready_for_docking()
@@ -119,9 +110,15 @@
 /datum/computer/file/embedded_program/airlock/docking
 	var/datum/computer/file/embedded_program/docking/airlock/master_prog
 
+/datum/computer/file/embedded_program/airlock/docking/Destroy()
+	if(master_prog)
+		master_prog.airlock_program = null
+		master_prog = null
+	return ..()
+
 /datum/computer/file/embedded_program/airlock/docking/receive_user_command(command)
 	if (master_prog.undocked() || master_prog.override_enabled)	//only allow the port to be used as an airlock if nothing is docked here or the override is enabled
-		..(command)
+		return ..(command)
 
 /datum/computer/file/embedded_program/airlock/docking/proc/enable_mech_regulators()
 	enable_mech_regulation()
@@ -140,16 +137,18 @@
 /*** DEBUG VERBS ***
 
 /datum/computer/file/embedded_program/docking/proc/print_state()
-	world << "id_tag: [id_tag]"
-	world << "dock_state: [dock_state]"
-	world << "control_mode: [control_mode]"
-	world << "tag_target: [tag_target]"
-	world << "response_sent: [response_sent]"
+	log_debug("id_tag: [id_tag]")
+	log_debug("dock_state: [dock_state]")
+	log_debug("control_mode: [control_mode]")
+	log_debug("tag_target: [tag_target]")
+	log_debug("response_sent: [response_sent]")
 
 /datum/computer/file/embedded_program/docking/post_signal(datum/signal/signal, comm_line)
-	world << "Program [id_tag] sent a message!"
+	log_debug("Program [id_tag] sent a message!")
+
 	print_state()
-	world << "[id_tag] sent command \"[signal.data["command"]]\" to \"[signal.data["recipient"]]\""
+	log_debug("[id_tag] sent command \"[signal.data["command"]]\" to \"[signal.data["recipient"]]\"")
+
 	..(signal)
 
 /obj/machinery/embedded_controller/radio/airlock/docking_port/verb/view_state()

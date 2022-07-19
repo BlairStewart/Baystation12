@@ -1,24 +1,10 @@
-var/global/list/empty_playable_ai_cores = list()
-
-/hook/roundstart/proc/spawn_empty_ai()
-	if("AI" in ticker.mode.disabled_jobs)
-		return 1	// Don't make empty AI's if you can't have them (also applies to Malf)
-	for(var/obj/effect/landmark/start/S in landmarks_list)
-		if(S.name != "AI")
-			continue
-		if(locate(/mob/living) in S.loc)
-			continue
-		empty_playable_ai_cores += new /obj/structure/AIcore/deactivated(get_turf(S))
-
-	return 1
-
 /mob/living/silicon/ai/verb/wipe_core()
 	set name = "Wipe Core"
 	set category = "OOC"
 	set desc = "Wipe your core. This is functionally equivalent to cryo or robotic storage, freeing up your job slot."
 
-	if(ticker && ticker.mode && ticker.mode.name == "AI malfunction")
-		usr << "<span class='danger'>You cannot use this verb in malfunction. If you need to leave, please adminhelp.</span>"
+	if(istype(loc, /obj/item))
+		to_chat(src, "You cannot wipe your core when you are on a portable storage device.")
 		return
 
 	// Guard against misclicks, this isn't the sort of thing we want happening accidentally
@@ -26,20 +12,18 @@ var/global/list/empty_playable_ai_cores = list()
 					"Wipe Core", "No", "No", "Yes") != "Yes")
 		return
 
-	// We warned you.
+	if(istype(loc, /obj/item))
+		to_chat(src, "You cannot wipe your core when you are on a portable storage device.")
+		return
+
+	if(is_special_character(src))
+		log_and_message_admins("removed themselves from the round via Wipe Core")
+
+	GLOB.global_announcer.autosay("[src] has been moved to intelligence storage.", "Artificial Intelligence Oversight")
+	despawn()
+
+/mob/living/silicon/ai/proc/despawn()
 	empty_playable_ai_cores += new /obj/structure/AIcore/deactivated(loc)
-	global_announcer.autosay("[src] has been moved to intelligence storage.", "Artificial Intelligence Oversight")
 
 	//Handle job slot/tater cleanup.
-	var/job = mind.assigned_role
-
-	job_master.FreeRole(job)
-
-	if(mind.objectives.len)
-		qdel(mind.objectives)
-		mind.special_role = null
-
-	clear_antag_roles(mind)
-
-	ghostize(0)
-	qdel(src)
+	clear_client()

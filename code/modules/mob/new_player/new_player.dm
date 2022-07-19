@@ -2,493 +2,454 @@
 
 /mob/new_player
 	var/ready = 0
+	var/respawned_time = 0
 	var/spawning = 0//Referenced when you want to delete the new_player later on in the code.
 	var/totalPlayers = 0		 //Player counts for the Lobby tab
 	var/totalPlayersReady = 0
-	universal_speak = 1
+	var/datum/browser/panel
+	var/show_invalid_jobs = 0
+	universal_speak = TRUE
 
 	invisibility = 101
 
-	density = 0
-	stat = 2
-	canmove = 0
+	density = FALSE
+	stat = DEAD
 
-	anchored = 1	//  don't get pushed around
+	movement_handlers = list()
+	anchored = TRUE	//  don't get pushed around
 
-	New()
-		mob_list += src
-
-	verb/new_player_panel()
-		set src = usr
-		new_player_panel_proc()
+	virtual_mob = null // Hear no evil, speak no evil
 
 
-	proc/new_player_panel_proc()
-		var/output = "<div align='center'><B>New Player Options</B>"
-		output +="<hr>"
-		output += "<p><a href='byond://?src=\ref[src];show_preferences=1'>Setup Character</A></p>"
+/mob/new_player/New()
+	..()
+	verbs += /mob/proc/toggle_antag_pool
 
-		if(!ticker || ticker.current_state <= GAME_STATE_PREGAME)
-			if(ready)
-				output += "<p>\[ <b>Ready</b> | <a href='byond://?src=\ref[src];ready=0'>Not Ready</a> \]</p>"
-			else
-				output += "<p>\[ <a href='byond://?src=\ref[src];ready=1'>Ready</a> | <b>Not Ready</b> \]</p>"
 
-		else
-			output += "<a href='byond://?src=\ref[src];manifest=1'>View the Crew Manifest</A><br><br>"
-			output += "<p><a href='byond://?src=\ref[src];late_join=1'>Join Game!</A></p>"
-
-		output += "<p><a href='byond://?src=\ref[src];observe=1'>Observe</A></p>"
-
-		if(!IsGuestKey(src.key))
-			establish_db_connection()
-
-			if(dbcon.IsConnected())
-				var/isadmin = 0
-				if(src.client && src.client.holder)
-					isadmin = 1
-				var/DBQuery/query = dbcon.NewQuery("SELECT id FROM erro_poll_question WHERE [(isadmin ? "" : "adminonly = false AND")] Now() BETWEEN starttime AND endtime AND id NOT IN (SELECT pollid FROM erro_poll_vote WHERE ckey = \"[ckey]\") AND id NOT IN (SELECT pollid FROM erro_poll_textreply WHERE ckey = \"[ckey]\")")
-				query.Execute()
-				var/newpoll = 0
-				while(query.NextRow())
-					newpoll = 1
-					break
-
-				if(newpoll)
-					output += "<p><b><a href='byond://?src=\ref[src];showpoll=1'>Show Player Polls</A> (NEW!)</b></p>"
-				else
-					output += "<p><a href='byond://?src=\ref[src];showpoll=1'>Show Player Polls</A></p>"
-
-		output += "</div>"
-
-		src << browse(output,"window=playersetup;size=210x280;can_close=0")
+/mob/new_player/proc/new_player_panel(force)
+	if (!force && !SScharacter_setup.initialized)
 		return
+	var/list/output = list()
+	output += "<div align='center'>"
+	if (config.wiki_url || config.rules_url || config.lore_url)
+		var/player_age = client?.player_age
+		if (isnum(player_age) && player_age < 7)
+			output += "<b>Welcome! Please check out these links:</b><br>"
+		if (config.wiki_url)
+			output += "<a href='byond://?src=\ref[src];show_wiki=1'>Wiki</a>"
+		if (config.rules_url)
+			output += "<a href='byond://?src=\ref[src];show_rules=1'>Rules</a>"
+		if (config.lore_url)
+			output += "<a href='byond://?src=\ref[src];show_lore=1'>Lore</a>"
+	output += "<hr>"
+	if (GAME_STATE > RUNLEVEL_LOBBY)
+		output += "<a href='byond://?src=\ref[src];manifest=1'>Manifest</a>"
+	output += "<a href='byond://?src=\ref[src];show_preferences=1'>Options</a>"
+	output += "<hr>"
+	output += "<b>Playing As</b><br>"
+	output += "<a href='byond://?src=\ref[client.prefs];load=1;details=1'>[client.prefs.real_name || "(Random)"]</a><br>"
+	output += client.prefs.job_high ? "[client.prefs.job_high]" : null
+	output += "<hr>"
+	output += "<a href='byond://?src=\ref[src];observe=1'>Join As Observer</a>"
+	if (GAME_STATE > RUNLEVEL_LOBBY)
+		output += "<a href='byond://?src=\ref[src];late_join=1'>Join As Selected</a>"
+	else
+		output += "<a [ready?"class='linkOn'":""] href='byond://?src=\ref[src];ready=[!ready]'>Round Start Join</a>"
+	output += "<hr>"
+	output += "<i>[GLOB.using_map.get_map_info()||"No information available for the current map."]</i>"
+	output += "</div>"
+	panel = new (src, "Welcome","Welcome to [GLOB.using_map.full_name]", 560, 340, src)
+	panel.set_window_options("can_close=0")
+	panel.set_content(output.Join())
+	panel.open()
 
-	Stat()
-		..()
 
-		if(statpanel("Lobby") && ticker)
-			if(ticker.hide_mode)
-				stat("Game Mode:", "Secret")
+/mob/new_player/Stat()
+	. = ..()
+
+	if(statpanel("Lobby"))
+		if(check_rights(R_INVESTIGATE, 0, src))
+			stat("Game Mode:", "[SSticker.mode ? SSticker.mode.name : SSticker.master_mode] ([SSticker.master_mode])")
+		else
+			stat("Game Mode:", PUBLIC_GAME_MODE)
+		var/extra_antags = list2params(additional_antag_types)
+		stat("Added Antagonists:", extra_antags ? extra_antags : "None")
+		stat("Initial Continue Vote:", "[round(config.vote_autotransfer_initial / 600, 1)] minutes")
+		stat("Additional Vote Every:", "[round(config.vote_autotransfer_interval / 600, 1)] minutes")
+
+		if(GAME_STATE <= RUNLEVEL_LOBBY)
+			stat("Time To Start:", "[round(SSticker.pregame_timeleft/10)][SSticker.round_progressing ? "" : " (DELAYED)"]")
+			stat("Players: [totalPlayers]", "Players Ready: [totalPlayersReady]")
+			totalPlayers = 0
+			totalPlayersReady = 0
+			for(var/mob/new_player/player in GLOB.player_list)
+				var/highjob
+				if (player.client)
+					var/show_ready = player.client.get_preference_value(/datum/client_preference/show_ready) == GLOB.PREF_SHOW
+					if (player.client.prefs?.job_high)
+						highjob = " as [player.client.prefs.job_high]"
+					if (!player.is_stealthed())
+						var/can_see_hidden = check_rights(R_INVESTIGATE, 0)
+						var/datum/game_mode/mode = SSticker.pick_mode(SSticker.master_mode)
+						var/list/readied_antag_roles = list()
+						if (mode && can_see_hidden)
+							for (var/role in player.client.prefs.be_special_role)
+								if (role in mode.antag_tags)
+									readied_antag_roles += role
+
+						var/antag_role_text = "[readied_antag_roles.len ? "Readied for ([english_list(readied_antag_roles)])" : ""]"
+						stat("[player.key]", (player.ready && (show_ready || can_see_hidden)?("(Playing[highjob]) [(can_see_hidden && !show_ready) ? "(Hidden)" : ""] [antag_role_text]"):(null)))
+				totalPlayers++
+				if(player.ready)totalPlayersReady++
+		else
+			stat("Next Continue Vote:", "[max(round(transfer_controller.time_till_transfer_vote() / 600, 1), 0)] minutes")
+
+/mob/new_player/Topic(href, href_list) // This is a full override; does not call parent.
+	if (usr != src)
+		return TOPIC_NOACTION
+	if (!client)
+		return TOPIC_NOACTION
+	if (href_list["show_preferences"])
+		client.prefs.open_setup_window(src)
+		return 1
+	if (href_list["show_wiki"])
+		client.link_url(config.wiki_url, "Wiki", TRUE)
+		return 1
+	if (href_list["show_rules"])
+		client.link_url(config.rules_url, "Rules", TRUE)
+		return 1
+	if (href_list["show_lore"])
+		client.link_url(config.lore_url, "Lore", TRUE)
+		return 1
+	if (href_list["ready"])
+		ready = GAME_STATE > RUNLEVEL_LOBBY ? 0 : text2num(href_list["ready"])
+	if (href_list["refresh"])
+		panel.close()
+		new_player_panel()
+
+	if(href_list["observe"])
+		if(GAME_STATE < RUNLEVEL_LOBBY)
+			to_chat(src, "<span class='warning'>Please wait for server initialization to complete...</span>")
+			return
+
+		if(!config.respawn_delay || client.holder || alert(src,"Are you sure you wish to observe? You will have to wait [config.respawn_delay] minute\s before being able to respawn!","Player Setup","Yes","No") == "Yes")
+			if(!client)	return 1
+			var/mob/observer/ghost/observer = new()
+
+			spawning = 1
+			sound_to(src, sound(null, repeat = 0, wait = 0, volume = 85, channel = GLOB.lobby_sound_channel))// MAD JAMS cant last forever yo
+
+
+			observer.started_as_observer = 1
+			close_spawn_windows()
+			var/obj/O = locate("landmark*Observer-Start")
+			if(istype(O))
+				to_chat(src, "<span class='notice'>Now teleporting.</span>")
+				observer.forceMove(O.loc)
 			else
-				if(ticker.hide_mode == 0)
-					stat("Game Mode:", "[master_mode]") // Old setting for showing the game mode
+				to_chat(src, "<span class='danger'>Could not locate an observer spawn point. Use the Teleport verb to jump to the map.</span>")
+			observer.timeofdeath = world.time // Set the time of death so that the respawn timer works correctly.
 
-			if(ticker.current_state == GAME_STATE_PREGAME)
-				stat("Time To Start:", "[ticker.pregame_timeleft][round_progressing ? "" : " (DELAYED)"]")
-				stat("Players: [totalPlayers]", "Players Ready: [totalPlayersReady]")
-				totalPlayers = 0
-				totalPlayersReady = 0
-				for(var/mob/new_player/player in player_list)
-					stat("[player.key]", (player.ready)?("(Playing)"):(null))
-					totalPlayers++
-					if(player.ready)totalPlayersReady++
+			var/should_announce = client.get_preference_value(/datum/client_preference/announce_ghost_join) == GLOB.PREF_YES
 
-	Topic(href, href_list[])
-		if(!client)	return 0
+			if(isnull(client.holder) && should_announce)
+				announce_ghost_joinleave(src)
 
-		if(href_list["show_preferences"])
-			client.prefs.ShowChoices(src)
+			var/mob/living/carbon/human/dummy/mannequin = new()
+			client.prefs.dress_preview_mob(mannequin)
+			observer.set_appearance(mannequin)
+			qdel(mannequin)
+
+			observer.real_name = client.prefs.real_name
+			observer.SetName(observer.real_name)
+			if(!client.holder && !config.antag_hud_allowed)           // For new ghosts we remove the verb from even showing up if it's not allowed.
+				observer.verbs -= /mob/observer/ghost/verb/toggle_antagHUD        // Poor guys, don't know what they are missing!
+			observer.key = key
+			qdel(src)
+
 			return 1
 
-		if(href_list["ready"])
-			if(!ticker || ticker.current_state <= GAME_STATE_PREGAME) // Make sure we don't ready up after the round has started
-				ready = text2num(href_list["ready"])
-			else
-				ready = 0
-
-		if(href_list["refresh"])
-			src << browse(null, "window=playersetup") //closes the player setup window
-			new_player_panel_proc()
-
-		if(href_list["observe"])
-
-			if(alert(src,"Are you sure you wish to observe? You will have to wait 30 minutes before being able to respawn!","Player Setup","Yes","No") == "Yes")
-				if(!client)	return 1
-				var/mob/dead/observer/observer = new()
-
-				spawning = 1
-				src << sound(null, repeat = 0, wait = 0, volume = 85, channel = 1) // MAD JAMS cant last forever yo
-
-
-				observer.started_as_observer = 1
-				close_spawn_windows()
-				var/obj/O = locate("landmark*Observer-Start")
-				if(istype(O))
-					src << "<span class='notice'>Now teleporting.</span>"
-					observer.loc = O.loc
-				else
-					src << "<span class='danger'>Could not locate an observer spawn point. Use the Teleport verb to jump to the station map.</span>"
-				observer.timeofdeath = world.time // Set the time of death so that the respawn timer works correctly.
-
-				announce_ghost_joinleave(src)
-				client.prefs.update_preview_icon()
-				observer.icon = client.prefs.preview_icon
-				observer.alpha = 127
-
-				if(client.prefs.be_random_name)
-					client.prefs.real_name = random_name(client.prefs.gender)
-				observer.real_name = client.prefs.real_name
-				observer.name = observer.real_name
-				if(!client.holder && !config.antag_hud_allowed)           // For new ghosts we remove the verb from even showing up if it's not allowed.
-					observer.verbs -= /mob/dead/observer/verb/toggle_antagHUD        // Poor guys, don't know what they are missing!
-				observer.key = key
-				qdel(src)
-
-				return 1
-
-		if(href_list["late_join"])
-
-			if(!ticker || ticker.current_state != GAME_STATE_PLAYING)
-				usr << "\red The round is either not ready, or has already finished..."
-				return
-
-			if(!check_rights(R_ADMIN, 0))
-				var/datum/species/S = all_species[client.prefs.species]
-				if((S.spawn_flags & IS_WHITELISTED) && !is_alien_whitelisted(src, client.prefs.species) && config.usealienwhitelist)
-					src << alert("You are currently not whitelisted to play [client.prefs.species].")
-					return 0
-
-				if(!(S.spawn_flags & CAN_JOIN))
-					src << alert("Your current species, [client.prefs.species], is not available for play on the station.")
-					return 0
-
-			LateChoices()
-
-		if(href_list["manifest"])
-			ViewManifest()
-
-		if(href_list["SelectedJob"])
-
-			if(!config.enter_allowed)
-				usr << "<span class='notice'>There is an administrative lock on entering the game!</span>"
-				return
-			else if(ticker && ticker.mode && ticker.mode.explosion_in_progress)
-				usr << "<span class='danger'>The station is currently exploding. Joining would go poorly.</span>"
-				return
-
-			var/datum/species/S = all_species[client.prefs.species]
-			if((S.spawn_flags & IS_WHITELISTED) && !is_alien_whitelisted(src, client.prefs.species) && config.usealienwhitelist)
-				src << alert("You are currently not whitelisted to play [client.prefs.species].")
-				return 0
-
-			if(!(S.spawn_flags & CAN_JOIN))
-				src << alert("Your current species, [client.prefs.species], is not available for play on the station.")
-				return 0
-
-			AttemptLateSpawn(href_list["SelectedJob"],client.prefs.spawnpoint)
+	if(href_list["late_join"])
+		if(GAME_STATE != RUNLEVEL_GAME)
+			to_chat(usr, SPAN_WARNING("The round has either not started yet or already ended."))
 			return
-
-		if(href_list["privacy_poll"])
-			establish_db_connection()
-			if(!dbcon.IsConnected())
+		if (!client.holder)
+			var/dsdiff = config.respawn_menu_delay MINUTES - (world.time - respawned_time)
+			if (dsdiff > 0)
+				to_chat(usr, SPAN_WARNING("You must wait [time2text(dsdiff, "mm:ss")] before rejoining."))
 				return
-			var/voted = 0
+		LateChoices() //show the latejoin job selection menu
 
-			//First check if the person has not voted yet.
-			var/DBQuery/query = dbcon.NewQuery("SELECT * FROM erro_privacy WHERE ckey='[src.ckey]'")
-			query.Execute()
-			while(query.NextRow())
-				voted = 1
-				break
+	if(href_list["manifest"])
+		ViewManifest()
 
-			//This is a safety switch, so only valid options pass through
-			var/option = "UNKNOWN"
-			switch(href_list["privacy_poll"])
-				if("signed")
-					option = "SIGNED"
-				if("anonymous")
-					option = "ANONYMOUS"
-				if("nostats")
-					option = "NOSTATS"
-				if("later")
-					usr << browse(null,"window=privacypoll")
-					return
-				if("abstain")
-					option = "ABSTAIN"
+	if(href_list["SelectedJob"])
+		var/datum/job/job = SSjobs.get_by_title(href_list["SelectedJob"])
 
-			if(option == "UNKNOWN")
-				return
+		if(!SSjobs.check_general_join_blockers(src, job))
+			return FALSE
 
-			if(!voted)
-				var/sql = "INSERT INTO erro_privacy VALUES (null, Now(), '[src.ckey]', '[option]')"
-				var/DBQuery/query_insert = dbcon.NewQuery(sql)
-				query_insert.Execute()
-				usr << "<b>Thank you for your vote!</b>"
-				usr << browse(null,"window=privacypoll")
-
-		if(!ready && href_list["preference"])
-			if(client)
-				client.prefs.process_link(src, href_list)
-		else if(!href_list["late_join"])
-			new_player_panel()
-
-		if(href_list["showpoll"])
-
-			handle_player_polling()
-			return
-
-		if(href_list["pollid"])
-
-			var/pollid = href_list["pollid"]
-			if(istext(pollid))
-				pollid = text2num(pollid)
-			if(isnum(pollid))
-				src.poll_player(pollid)
-			return
-
-		if(href_list["votepollid"] && href_list["votetype"])
-			var/pollid = text2num(href_list["votepollid"])
-			var/votetype = href_list["votetype"]
-			switch(votetype)
-				if("OPTION")
-					var/optionid = text2num(href_list["voteoptionid"])
-					vote_on_poll(pollid, optionid)
-				if("TEXT")
-					var/replytext = href_list["replytext"]
-					log_text_poll_reply(pollid, replytext)
-				if("NUMVAL")
-					var/id_min = text2num(href_list["minid"])
-					var/id_max = text2num(href_list["maxid"])
-
-					if( (id_max - id_min) > 100 )	//Basic exploit prevention
-						usr << "The option ID difference is too big. Please contact administration or the database admin."
-						return
-
-					for(var/optionid = id_min; optionid <= id_max; optionid++)
-						if(!isnull(href_list["o[optionid]"]))	//Test if this optionid was replied to
-							var/rating
-							if(href_list["o[optionid]"] == "abstain")
-								rating = null
-							else
-								rating = text2num(href_list["o[optionid]"])
-								if(!isnum(rating))
-									return
-
-							vote_on_numval_poll(pollid, optionid, rating)
-				if("MULTICHOICE")
-					var/id_min = text2num(href_list["minoptionid"])
-					var/id_max = text2num(href_list["maxoptionid"])
-
-					if( (id_max - id_min) > 100 )	//Basic exploit prevention
-						usr << "The option ID difference is too big. Please contact administration or the database admin."
-						return
-
-					for(var/optionid = id_min; optionid <= id_max; optionid++)
-						if(!isnull(href_list["option_[optionid]"]))	//Test if this optionid was selected
-							vote_on_poll(pollid, optionid, 1)
-
-	proc/IsJobAvailable(rank)
-		var/datum/job/job = job_master.GetJob(rank)
-		if(!job)	return 0
-		if(!job.is_position_available()) return 0
-		if(jobban_isbanned(src,rank))	return 0
-		if(!job.player_old_enough(src.client))	return 0
-		return 1
-
-
-	proc/AttemptLateSpawn(rank,var/spawning_at)
-		if(src != usr)
-			return 0
-		if(!ticker || ticker.current_state != GAME_STATE_PLAYING)
-			usr << "\red The round is either not ready, or has already finished..."
-			return 0
-		if(!config.enter_allowed)
-			usr << "<span class='notice'>There is an administrative lock on entering the game!</span>"
-			return 0
-		if(!IsJobAvailable(rank))
-			src << alert("[rank] is not available. Please try another.")
+		var/datum/species/S = all_species[client.prefs.species]
+		if(!check_species_allowed(S))
 			return 0
 
-		spawning = 1
-		close_spawn_windows()
+		AttemptLateSpawn(job, client.prefs.spawnpoint)
+		return
 
-		job_master.AssignRole(src, rank, 1)
+	if(!ready && href_list["preference"])
+		if(client)
+			client.prefs.process_link(src, href_list)
 
-		var/mob/living/character = create_character()	//creates the human and transfers vars and mind
-		character = job_master.EquipRank(character, rank, 1)					//equips the human
-		UpdateFactionList(character)
-		equip_custom_items(character)
+	else if(!href_list["late_join"])
+		new_player_panel()
 
-		// AIs don't need a spawnpoint, they must spawn at an empty core
-		if(character.mind.assigned_role == "AI")
+/mob/new_player/proc/AttemptLateSpawn(var/datum/job/job, var/spawning_at)
 
-			character = character.AIize(move=0) // AIize the character, but don't move them yet
-
-			// IsJobAvailable for AI checks that there is an empty core available in this list
-			var/obj/structure/AIcore/deactivated/C = empty_playable_ai_cores[1]
-			empty_playable_ai_cores -= C
-
-			character.loc = C.loc
-
-			AnnounceCyborg(character, rank, "has been downloaded to the empty core in \the [character.loc.loc]")
-			ticker.mode.handle_latejoin(character)
-
-			qdel(C)
-			qdel(src)
-			return
-
-		//Find our spawning point.
-		var/join_message = job_master.LateSpawn(character, rank)
-
-		character.lastarea = get_area(loc)
-		// Moving wheelchair if they have one
-		if(character.buckled && istype(character.buckled, /obj/structure/bed/chair/wheelchair))
-			character.buckled.loc = character.loc
-			character.buckled.set_dir(character.dir)
-
-		ticker.mode.handle_latejoin(character)
-
-		if(character.mind.assigned_role != "Cyborg")
-			data_core.manifest_inject(character)
-			ticker.minds += character.mind//Cyborgs and AIs handle this in the transform proc.	//TODO!!!!! ~Carn
-
-			//Grab some data from the character prefs for use in random news procs.
-
-			AnnounceArrival(character, rank, join_message)
-		else
-			AnnounceCyborg(character, rank, join_message)
-
-		qdel(src)
-
-	proc/AnnounceCyborg(var/mob/living/character, var/rank, var/join_message)
-		if (ticker.current_state == GAME_STATE_PLAYING)
-			if(character.mind.role_alt_title)
-				rank = character.mind.role_alt_title
-			// can't use their name here, since cyborg namepicking is done post-spawn, so we'll just say "A new Cyborg has arrived"/"A new Android has arrived"/etc.
-			global_announcer.autosay("A new[rank ? " [rank]" : " visitor" ] [join_message ? join_message : "has arrived on the station"].", "Arrivals Announcement Computer")
-
-	proc/LateChoices()
-		var/name = client.prefs.be_random_name ? "friend" : client.prefs.real_name
-
-		var/dat = "<html><body><center>"
-		dat += "<b>Welcome, [name].<br></b>"
-		dat += "Round Duration: [round_duration()]<br>"
-
-		if(emergency_shuttle) //In case Nanotrasen decides reposess CentComm's shuttles.
-			if(emergency_shuttle.going_to_centcom()) //Shuttle is going to centcomm, not recalled
-				dat += "<font color='red'><b>The station has been evacuated.</b></font><br>"
-			if(emergency_shuttle.online())
-				if (emergency_shuttle.evac)	// Emergency shuttle is past the point of no recall
-					dat += "<font color='red'>The station is currently undergoing evacuation procedures.</font><br>"
-				else						// Crew transfer initiated
-					dat += "<font color='red'>The station is currently undergoing crew transfer procedures.</font><br>"
-
-		dat += "Choose from the following open/valid positions:<br>"
-		for(var/datum/job/job in job_master.occupations)
-			if(job && IsJobAvailable(job.title))
-				if(job.minimum_character_age && (client.prefs.age < job.minimum_character_age))
-					continue
-				var/active = 0
-				// Only players with the job assigned and AFK for less than 10 minutes count as active
-				for(var/mob/M in player_list) if(M.mind && M.client && M.mind.assigned_role == job.title && M.client.inactivity <= 10 * 60 * 10)
-					active++
-				dat += "<a href='byond://?src=\ref[src];SelectedJob=[job.title]'>[job.title] ([job.current_positions]) (Active: [active])</a><br>"
-
-		dat += "</center>"
-		src << browse(dat, "window=latechoices;size=300x640;can_close=1")
-
-
-	proc/create_character()
-		spawning = 1
-		close_spawn_windows()
-
-		var/mob/living/carbon/human/new_character
-
-		var/use_species_name
-		var/datum/species/chosen_species
-		if(client.prefs.species)
-			chosen_species = all_species[client.prefs.species]
-			use_species_name = chosen_species.get_station_variant() //Only used by pariahs atm.
-
-		if(chosen_species && use_species_name)
-			// Have to recheck admin due to no usr at roundstart. Latejoins are fine though.
-			if(is_species_whitelisted(chosen_species) || has_admin_rights())
-				new_character = new(loc, use_species_name)
-
-		if(!new_character)
-			new_character = new(loc)
-
-		new_character.lastarea = get_area(loc)
-
-		for(var/lang in client.prefs.alternate_languages)
-			var/datum/language/chosen_language = all_languages[lang]
-			if(chosen_language)
-				if(!config.usealienwhitelist || !(chosen_language.flags & WHITELISTED) || is_alien_whitelisted(src, lang) || has_admin_rights() \
-					|| (new_character.species && (chosen_language.name in new_character.species.secondary_langs)))
-					new_character.add_language(lang)
-
-		if(ticker.random_players)
-			new_character.gender = pick(MALE, FEMALE)
-			client.prefs.real_name = random_name(new_character.gender)
-			client.prefs.randomize_appearance_for(new_character)
-		else
-			client.prefs.copy_to(new_character)
-
-		src << sound(null, repeat = 0, wait = 0, volume = 85, channel = 1) // MAD JAMS cant last forever yo
-
-		if(mind)
-			mind.active = 0					//we wish to transfer the key manually
-			if(mind.assigned_role == "Clown")				//give them a clownname if they are a clown
-				new_character.real_name = pick(clown_names)	//I hate this being here of all places but unfortunately dna is based on real_name!
-				new_character.rename_self("clown")
-			mind.original = new_character
-			mind.transfer_to(new_character)					//won't transfer key since the mind is not active
-
-		new_character.name = real_name
-		new_character.dna.ready_dna(new_character)
-		new_character.dna.b_type = client.prefs.b_type
-		new_character.sync_organ_dna()
-		if(client.prefs.disabilities)
-			// Set defer to 1 if you add more crap here so it only recalculates struc_enzymes once. - N3X
-			new_character.dna.SetSEState(GLASSESBLOCK,1,0)
-			new_character.disabilities |= NEARSIGHTED
-
-		// And uncomment this, too.
-		//new_character.dna.UpdateSE()
-
-		// Do the initial caching of the player's body icons.
-		new_character.force_update_limbs()
-		new_character.update_eyes()
-		new_character.regenerate_icons()
-
-		new_character.key = key		//Manually transfer the key to log them in
-
-		return new_character
-
-	proc/ViewManifest()
-		var/dat = "<html><body>"
-		dat += "<h4>Show Crew Manifest</h4>"
-		dat += data_core.get_manifest(OOC = 1)
-
-		src << browse(dat, "window=manifest;size=370x420;can_close=1")
-
-	Move()
+	if(src != usr)
+		return 0
+	if(GAME_STATE != RUNLEVEL_GAME)
+		to_chat(usr, "<span class='warning'>The round is either not ready, or has already finished...</span>")
+		return 0
+	if(!config.enter_allowed)
+		to_chat(usr, "<span class='notice'>There is an administrative lock on entering the game!</span>")
 		return 0
 
-	proc/close_spawn_windows()
-		src << browse(null, "window=latechoices") //closes late choices window
-		src << browse(null, "window=playersetup") //closes the player setup window
+	if(!job || !job.is_available(client))
+		alert("[job.title] is not available. Please try another.")
+		return 0
+	if(job.is_restricted(client.prefs, src))
+		return
 
-	proc/has_admin_rights()
-		return check_rights(R_ADMIN, 0, src)
+	var/datum/spawnpoint/spawnpoint = job.get_spawnpoint(client)
+	var/turf/spawn_turf = pick(spawnpoint.turfs)
+	if(job.latejoin_at_spawnpoints)
+		var/obj/S = job.get_roundstart_spawnpoint()
+		spawn_turf = get_turf(S)
 
-	proc/is_species_whitelisted(datum/species/S)
-		if(!S) return 1
-		return is_alien_whitelisted(src, S.name) || !config.usealienwhitelist || !(S.spawn_flags & IS_WHITELISTED)
+	if(!SSjobs.check_unsafe_spawn(src, spawn_turf))
+		return
+
+	// Just in case someone stole our position while we were waiting for input from alert() proc
+	if(!job || !job.is_available(client))
+		to_chat(src, alert("[job.title] is not available. Please try another."))
+		return 0
+
+	SSjobs.assign_role(src, job.title, 1)
+
+	var/mob/living/character = create_character(spawn_turf)	//creates the human and transfers vars and mind
+	if(!character)
+		return 0
+
+	character = SSjobs.equip_rank(character, job.title, 1)					//equips the human
+	SScustomitems.equip_custom_items(character)
+
+	// AIs don't need a spawnpoint, they must spawn at an empty core
+	if(character.mind.assigned_role == "AI")
+
+		character = character.AIize(move=0) // AIize the character, but don't move them yet
+
+		// is_available for AI checks that there is an empty core available in this list
+		var/obj/structure/AIcore/deactivated/C = empty_playable_ai_cores[1]
+		empty_playable_ai_cores -= C
+
+		character.forceMove(C.loc)
+		var/mob/living/silicon/ai/A = character
+		A.on_mob_init()
+
+		AnnounceCyborg(character, job.title, "has been downloaded to the empty core in \the [character.loc.loc]")
+		SSticker.mode.handle_latejoin(character)
+
+		qdel(C)
+		qdel(src)
+		return
+
+	SSticker.mode.handle_latejoin(character)
+	GLOB.universe.OnPlayerLatejoin(character)
+	spawnpoint.after_join(character)
+	if(job.create_record)
+		if(character.mind.assigned_role != "Robot")
+			CreateModularRecord(character)
+			SSticker.minds += character.mind//Cyborgs and AIs handle this in the transform proc.	//TODO!!!!! ~Carn
+			AnnounceArrival(character, job, spawnpoint.msg)
+		else
+			AnnounceCyborg(character, job, spawnpoint.msg)
+	log_and_message_admins("has joined the round as [character.mind.assigned_role].", character)
+
+	if(character.needs_wheelchair())
+		equip_wheelchair(character)
+
+	qdel(src)
+
+
+/mob/new_player/proc/AnnounceCyborg(var/mob/living/character, var/rank, var/join_message)
+	if (GAME_STATE == RUNLEVEL_GAME)
+		if(character.mind.role_alt_title)
+			rank = character.mind.role_alt_title
+		// can't use their name here, since cyborg namepicking is done post-spawn, so we'll just say "A new Cyborg has arrived"/"A new Android has arrived"/etc.
+		GLOB.global_announcer.autosay("A new[rank ? " [rank]" : " visitor" ] [join_message ? join_message : "has arrived"].", "Arrivals Announcement Computer")
+
+/mob/new_player/proc/LateChoices()
+	var/name = client.prefs.real_name
+
+	var/list/header = list("<html><body><center>")
+	header += "<b>Welcome, [name].<br></b>"
+	header += "Round Duration: [roundduration2text()]<br>"
+
+	if(evacuation_controller.has_evacuated())
+		header += "<font color='red'><b>\The [station_name()] has been evacuated.</b></font><br>"
+	else if(evacuation_controller.is_evacuating())
+		if(evacuation_controller.emergency_evacuation) // Emergency shuttle is past the point of no recall
+			header += "<font color='red'>\The [station_name()] is currently undergoing evacuation procedures.</font><br>"
+		else                                           // Crew transfer initiated
+			header += "<font color='red'>\The [station_name()] is currently undergoing crew transfer procedures.</font><br>"
+
+	var/list/dat = list()
+	dat += "Choose from the following open/valid positions:<br>"
+	dat += "<a href='byond://?src=\ref[src];invalid_jobs=1'>[show_invalid_jobs ? "Hide":"Show"] unavailable jobs.</a><br>"
+	dat += "<table>"
+	dat += "<tr><td colspan = 3><b>[GLOB.using_map.station_name]:</b></td></tr>"
+
+	// TORCH JOBS
+	var/list/job_summaries
+	var/list/hidden_reasons = list()
+	for(var/datum/job/job in SSjobs.primary_job_datums)
+		var/summary = job.get_join_link(client, "byond://?src=\ref[src];SelectedJob=[job.title]", show_invalid_jobs)
+		if(summary && summary != "")
+			LAZYADD(job_summaries, summary)
+		else
+			for(var/raisin in job.get_unavailable_reasons(client))
+				hidden_reasons[raisin] = TRUE
+
+	if(LAZYLEN(job_summaries))
+		dat += job_summaries
+	else
+		dat += "<tr><td>No available positions.</td></tr>"
+	// END TORCH JOBS
+
+	// SUBMAP JOBS
+	for(var/thing in SSmapping.submaps)
+		var/datum/submap/submap = thing
+		if(submap && submap.available())
+			dat += "<tr><td colspan = 3><b>[submap.name] ([submap.archetype.descriptor]):</b></td></tr>"
+			job_summaries = list()
+			for(var/otherthing in submap.jobs)
+				var/datum/job/job = submap.jobs[otherthing]
+				var/summary = job.get_join_link(client, "byond://?src=\ref[submap];joining=\ref[src];join_as=[otherthing]", show_invalid_jobs)
+				if(summary && summary != "")
+					LAZYADD(job_summaries, summary)
+				else
+					for(var/raisin in job.get_unavailable_reasons(client))
+						hidden_reasons[raisin] = TRUE
+
+			if(LAZYLEN(job_summaries))
+				dat += job_summaries
+			else
+				dat += "No available positions."
+	// END SUBMAP JOBS
+
+	dat += "</table></center>"
+	if(LAZYLEN(hidden_reasons))
+		var/list/additional_dat = list("<br><b>Some roles have been hidden from this list for the following reasons:</b><br>")
+		for(var/raisin in hidden_reasons)
+			additional_dat += "[raisin]<br>"
+		additional_dat += "<br>"
+		dat = additional_dat + dat
+	dat = header + dat
+	show_browser(src, jointext(dat, null), "window=latechoices;size=450x640;can_close=1")
+
+/mob/new_player/proc/create_character(var/turf/spawn_turf)
+	spawning = 1
+	close_spawn_windows()
+
+	var/mob/living/carbon/human/new_character
+
+	var/datum/species/chosen_species
+	if(client.prefs.species)
+		chosen_species = all_species[client.prefs.species]
+
+	if(!spawn_turf)
+		var/datum/job/job = SSjobs.get_by_title(mind.assigned_role)
+		if(!job)
+			job = SSjobs.get_by_title(GLOB.using_map.default_assistant_title)
+		var/datum/spawnpoint/spawnpoint = job.get_spawnpoint(client, client.prefs.ranks[job.title])
+		spawn_turf = pick(spawnpoint.turfs)
+
+	if(chosen_species)
+		if(!check_species_allowed(chosen_species))
+			spawning = 0 //abort
+			return null
+		new_character = new(spawn_turf, chosen_species.name)
+		if(chosen_species.has_organ[BP_POSIBRAIN] && client && client.prefs.is_shackled)
+			var/obj/item/organ/internal/posibrain/B = new_character.internal_organs_by_name[BP_POSIBRAIN]
+			if(B)	B.shackle(client.prefs.get_lawset())
+
+	if(!new_character)
+		new_character = new(spawn_turf)
+
+	new_character.lastarea = get_area(spawn_turf)
+
+	client.prefs.copy_to(new_character)
+
+	sound_to(src, sound(null, repeat = 0, wait = 0, volume = 85, channel = GLOB.lobby_sound_channel))// MAD JAMS cant last forever yo
+
+	if(mind)
+		mind.active = 0 //we wish to transfer the key manually
+		mind.original = new_character
+		if(client.prefs.memory)
+			mind.StoreMemory(client.prefs.memory)
+		mind.transfer_to(new_character)					//won't transfer key since the mind is not active
+
+	new_character.dna.ready_dna(new_character)
+	new_character.dna.b_type = client.prefs.b_type
+	new_character.sync_organ_dna()
+	if(client.prefs.disabilities)
+		// Set defer to 1 if you add more crap here so it only recalculates struc_enzymes once. - N3X
+		new_character.dna.SetSEState(GLOB.GLASSESBLOCK,1,0)
+		new_character.disabilities |= NEARSIGHTED
+
+	// Do the initial caching of the player's body icons.
+	new_character.force_update_limbs()
+	new_character.update_eyes()
+	new_character.regenerate_icons()
+
+	new_character.key = key		//Manually transfer the key to log them in
+	return new_character
+
+/mob/new_player/proc/ViewManifest()
+	var/dat = "<div align='center'>"
+	dat += html_crew_manifest(OOC = 1)
+	//show_browser(src, dat, "window=manifest;size=370x420;can_close=1")
+	var/datum/browser/popup = new(src, "Crew Manifest", "Crew Manifest", 370, 420, src)
+	popup.set_content(dat)
+	popup.open()
+
+/mob/new_player/Move()
+	return 0
+
+/mob/new_player/proc/close_spawn_windows()
+	close_browser(src, "window=latechoices") //closes late choices window
+	panel.close()
+
+/mob/new_player/proc/check_species_allowed(datum/species/S, var/show_alert=1)
+	if(!S.is_available_for_join() && !has_admin_rights())
+		if(show_alert)
+			to_chat(src, alert("Your current species, [client.prefs.species], is not available for play."))
+		return 0
+	if(!is_alien_whitelisted(src, S))
+		if(show_alert)
+			to_chat(src, alert("You are currently not whitelisted to play [client.prefs.species]."))
+		return 0
+	return 1
 
 /mob/new_player/get_species()
 	var/datum/species/chosen_species
 	if(client.prefs.species)
 		chosen_species = all_species[client.prefs.species]
 
-	if(!chosen_species)
-		return "Human"
+	if(!chosen_species || !check_species_allowed(chosen_species, 0))
+		return SPECIES_HUMAN
 
-	if(is_species_whitelisted(chosen_species) || has_admin_rights())
-		return chosen_species.name
-
-	return "Human"
+	return chosen_species.name
 
 /mob/new_player/get_gender()
 	if(!client || !client.prefs) ..()
@@ -500,8 +461,27 @@
 /mob/new_player/hear_say(var/message, var/verb = "says", var/datum/language/language = null, var/alt_name = "",var/italics = 0, var/mob/speaker = null)
 	return
 
-/mob/new_player/hear_radio(var/message, var/verb="says", var/datum/language/language=null, var/part_a, var/part_b, var/mob/speaker = null, var/hard_to_hear = 0)
+/mob/new_player/hear_radio(var/message, var/verb="says", var/datum/language/language=null, var/part_a, var/part_b, var/part_c, var/mob/speaker = null, var/hard_to_hear = 0)
 	return
 
-mob/new_player/MayRespawn()
+/mob/new_player/show_message(msg, type, alt, alt_type)
+	return
+
+/mob/new_player/MayRespawn()
 	return 1
+
+/mob/new_player/touch_map_edge()
+	return
+
+/mob/new_player/say(var/message)
+	sanitize_and_communicate(/decl/communication_channel/ooc, client, message)
+
+/mob/new_player/verb/next_lobby_track()
+	set name = "Play Different Lobby Track"
+	set category = "OOC"
+
+	if(get_preference_value(/datum/client_preference/play_lobby_music) == GLOB.PREF_NO)
+		return
+	var/decl/audio/track/track = GLOB.using_map.get_lobby_track(GLOB.using_map.lobby_track.type)
+	sound_to(src, track.get_sound())
+	to_chat(src, track.get_info())

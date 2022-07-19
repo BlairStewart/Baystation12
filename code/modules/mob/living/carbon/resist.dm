@@ -1,4 +1,3 @@
-
 /mob/living/carbon/process_resist()
 
 	//drop && roll
@@ -17,14 +16,13 @@
 				"<span class='notice'>You extinguish yourself.</span>"
 				)
 			ExtinguishMob()
-		return
+		return TRUE
 
-	..()
+	if(..())
+		return TRUE
 
 	if(handcuffed)
 		spawn() escape_handcuffs()
-	else if(legcuffed)
-		spawn() escape_legcuffs()
 
 /mob/living/carbon/proc/escape_handcuffs()
 	//if(!(last_special <= world.time)) return
@@ -37,75 +35,60 @@
 		break_handcuffs()
 		return
 
-	var/obj/item/weapon/handcuffs/HC = handcuffed
+	var/obj/item/handcuffs/HC = handcuffed
 
-	//A default in case you are somehow handcuffed with something that isn't an obj/item/weapon/handcuffs type
-	var/breakouttime = 1200
-	var/displaytime = 2 //Minutes to display in the "this will take X minutes."
-	//If you are handcuffed with actual handcuffs... Well what do I know, maybe someone will want to handcuff you with toilet paper in the future...
-	if(istype(HC))
-		breakouttime = HC.breakouttime
-		displaytime = breakouttime / 600 //Minutes
+	//A default in case you are somehow handcuffed with something that isn't an obj/item/handcuffs type
+	var/breakouttime = istype(HC) ? HC.breakouttime : 2 MINUTES
 
 	var/mob/living/carbon/human/H = src
 	if(istype(H) && H.gloves && istype(H.gloves,/obj/item/clothing/gloves/rig))
 		breakouttime /= 2
-		displaytime /= 2
+
+	if(psi && psi.can_use())
+		var/psi_mod = (1 - (psi.get_rank(PSI_PSYCHOKINESIS)*0.2))
+		breakouttime = max(5, breakouttime * psi_mod)
 
 	visible_message(
 		"<span class='danger'>\The [src] attempts to remove \the [HC]!</span>",
-		"<span class='warning'>You attempt to remove \the [HC]. (This will take around [displaytime] minutes and you need to stand still)</span>"
+		"<span class='warning'>You attempt to remove \the [HC] (This will take around [breakouttime / (1 SECOND)] second\s and you need to stand still).</span>", range = 2
 		)
 
-	if(do_after(src, breakouttime))
+	var/stages = 4
+	for(var/i = 1 to stages)
+		if(do_after(src, breakouttime*0.25, do_flags = DO_DEFAULT | DO_USER_UNIQUE_ACT, incapacitation_flags = INCAPACITATION_DEFAULT & ~INCAPACITATION_RESTRAINED))
+			if(!handcuffed || buckled)
+				return
+			to_chat(src, SPAN_WARNING("You try to slip free of \the [handcuffed] ([i*100/stages]% done)."))
+		else
+			if(!handcuffed || buckled)
+				return
+			to_chat(src, SPAN_WARNING("You stop trying to slip free of \the [handcuffed]."))
+			return
 		if(!handcuffed || buckled)
 			return
-		visible_message(
-			"<span class='danger'>\The [src] manages to remove \the [handcuffed]!</span>",
-			"<span class='notice'>You successfully remove \the [handcuffed].</span>"
-			)
-		drop_from_inventory(handcuffed)
-
-/mob/living/carbon/proc/escape_legcuffs()
-	if(!canClick())
-		return
-
-	setClickCooldown(100)
-
-	if(can_break_cuffs()) //Don't want to do a lot of logic gating here.
-		break_legcuffs()
-		return
-
-	var/obj/item/weapon/legcuffs/HC = legcuffed
-
-	//A default in case you are somehow legcuffed with something that isn't an obj/item/weapon/legcuffs type
-	var/breakouttime = 1200
-	var/displaytime = 2 //Minutes to display in the "this will take X minutes."
-	//If you are legcuffed with actual legcuffs... Well what do I know, maybe someone will want to legcuff you with toilet paper in the future...
-	if(istype(HC))
-		breakouttime = HC.breakouttime
-		displaytime = breakouttime / 600 //Minutes
-
-	visible_message(
-		"<span class='danger'>[usr] attempts to remove \the [HC]!</span>",
-		"<span class='warning'>You attempt to remove \the [HC]. (This will take around [displaytime] minutes and you need to stand still)</span>"
-		)
-
-	if(do_after(src, breakouttime))
-		if(!legcuffed || buckled)
+	if (handcuffed.health_max) // Improvised cuffs can break because their health is > 0
+		if (handcuffed.damage_health(handcuffed.get_max_health() / 2))
+			visible_message(
+				SPAN_DANGER("\The [src] manages to remove \the [handcuffed], breaking them!"),
+				SPAN_NOTICE("You successfully remove \the [handcuffed], breaking them!"), range = 2
+				)
+			QDEL_NULL(handcuffed)
+			if(buckled && buckled.buckle_require_restraints)
+				buckled.unbuckle_mob()
+			update_inv_handcuffed()
 			return
-		visible_message(
-			"<span class='danger'>[src] manages to remove \the [legcuffed]!</span>",
-			"<span class='notice'>You successfully remove \the [legcuffed].</span>"
-			)
+	visible_message(
+		SPAN_WARNING("\The [src] manages to remove \the [handcuffed]!"),
+		SPAN_NOTICE("You successfully remove \the [handcuffed]!"), range = 2
+		)
+	drop_from_inventory(handcuffed)
+	return
 
-		drop_from_inventory(legcuffed)
-		legcuffed = null
-		update_inv_legcuffed()
+/mob/living/proc/can_break_cuffs()
+	. = (psi && psi.can_use() && psi.get_rank(PSI_PSYCHOKINESIS) >= 5)
 
-/mob/living/carbon/proc/can_break_cuffs()
-	if(HULK in mutations)
-		return 1
+/mob/living/carbon/can_break_cuffs()
+	. = ..() || (MUTATION_HULK in mutations)
 
 /mob/living/carbon/proc/break_handcuffs()
 	visible_message(
@@ -113,7 +96,7 @@
 		"<span class='warning'>You attempt to break your [handcuffed.name]. (This will take around 5 seconds and you need to stand still)</span>"
 		)
 
-	if(do_after(src, 50))
+	if(do_after(src, 5 SECONDS, do_flags = DO_DEFAULT | DO_USER_UNIQUE_ACT, incapacitation_flags = INCAPACITATION_DEFAULT & ~INCAPACITATION_RESTRAINED))
 		if(!handcuffed || buckled)
 			return
 
@@ -122,7 +105,8 @@
 			"<span class='warning'>You successfully break your [handcuffed.name].</span>"
 			)
 
-		say(pick(";RAAAAAAAARGH!", ";HNNNNNNNNNGGGGGGH!", ";GWAAAAAAAARRRHHH!", "NNNNNNNNGGGGGGGGHH!", ";AAAAAAARRRGH!" ))
+		if(MUTATION_HULK in mutations)
+			say(pick(";RAAAAAAAARGH!", ";HNNNNNNNNNGGGGGGH!", ";GWAAAAAAAARRRHHH!", "NNNNNNNNGGGGGGGGHH!", ";AAAAAAARRRGH!" ))
 
 		qdel(handcuffed)
 		handcuffed = null
@@ -130,45 +114,42 @@
 			buckled.unbuckle_mob()
 		update_inv_handcuffed()
 
-/mob/living/carbon/proc/break_legcuffs()
-	src << "<span class='warning'>You attempt to break your legcuffs. (This will take around 5 seconds and you need to stand still)</span>"
-	visible_message("<span class='danger'>[src] is trying to break the legcuffs!</span>")
-
-	if(do_after(src, 50))
-		if(!legcuffed || buckled)
-			return
-
-		visible_message(
-			"<span class='danger'>[src] manages to break the legcuffs!</span>",
-			"<span class='warning'>You successfully break your legcuffs.</span>"
-			)
-
-		say(pick(";RAAAAAAAARGH!", ";HNNNNNNNNNGGGGGGH!", ";GWAAAAAAAARRRHHH!", "NNNNNNNNGGGGGGGGHH!", ";AAAAAAARRRGH!" ))
-
-		qdel(legcuffed)
-		legcuffed = null
-		update_inv_legcuffed()
-
 /mob/living/carbon/human/can_break_cuffs()
-	if(species.can_shred(src,1))
-		return 1
-	return ..()
+	. = ..() || species.can_shred(src,1)
 
 /mob/living/carbon/escape_buckle()
-	setClickCooldown(100)
-	if(!buckled) return
+	var/unbuckle_time
+	if(src.handcuffed && istype(src.buckled, /obj/effect/energy_net))
+		var/obj/effect/energy_net/N = src.buckled
+		N.escape_net(src) //super snowflake but is literally used NOWHERE ELSE.-Luke
+		return
 
+	if(!buckled) return
 	if(!restrained())
 		..()
 	else
+		setClickCooldown(100)
+		unbuckle_time = 2 MINUTES
+		if(psi && psi.can_use())
+			unbuckle_time = max(0, unbuckle_time - ((25 SECONDS) * psi.get_rank(PSI_PSYCHOKINESIS)))
+
 		visible_message(
-			"<span class='danger'>[usr] attempts to unbuckle themself!</span>",
-			"<span class='warning'>You attempt to unbuckle yourself. (This will take around 2 minutes and you need to stand still)</span>"
+			"<span class='danger'>[src] attempts to unbuckle themself!</span>",
+			"<span class='warning'>You attempt to unbuckle yourself. (This will take around [unbuckle_time / (1 SECOND)] second\s and you need to stand still)</span>", range = 2
 			)
 
-		if(do_after(usr, 1200))
-			if(!buckled)
+	if(unbuckle_time && buckled)
+		var/stages = 2
+		for(var/i = 1 to stages)
+			if(!unbuckle_time || do_after(usr, unbuckle_time*0.5, do_flags = DO_DEFAULT | DO_USER_UNIQUE_ACT, incapacitation_flags = INCAPACITATION_DISABLED))
+				if(!buckled)
+					return
+				to_chat(src, SPAN_WARNING("You try to unbuckle yourself ([i*100/stages]% done)."))
+			else
+				if(!buckled)
+					return
+				to_chat(src, SPAN_WARNING("You stop trying to unbuckle yourself."))
 				return
-			visible_message("<span class='danger'>[usr] manages to unbuckle themself!</span>",
-							"<span class='notice'>You successfully unbuckle yourself.</span>")
-			buckled.user_unbuckle_mob(src)
+		to_chat(src, SPAN_NOTICE("You successfully unbuckle yourself."))
+		buckled.user_unbuckle_mob(src)
+		return

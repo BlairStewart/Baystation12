@@ -1,30 +1,30 @@
 //This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:31
 
-/proc/dopage(src,target)
-	var/href_list
-	var/href
-	href_list = params2list("src=\ref[src]&[target]=1")
-	href = "src=\ref[src];[target]=1"
-	src:temphtml = null
-	src:Topic(href, href_list)
-	return null
-
 /proc/is_on_same_plane_or_station(var/z1, var/z2)
 	if(z1 == z2)
 		return 1
-	if((z1 in config.station_levels) &&	(z2 in config.station_levels))
+	if((z1 in GLOB.using_map.station_levels) &&	(z2 in GLOB.using_map.station_levels))
 		return 1
 	return 0
 
 /proc/max_default_z_level()
 	var/max_z = 0
-	for(var/z in config.station_levels)
+	for(var/z in GLOB.using_map.station_levels)
 		max_z = max(z, max_z)
-	for(var/z in config.admin_levels)
+	for(var/z in GLOB.using_map.admin_levels)
 		max_z = max(z, max_z)
-	for(var/z in config.player_levels)
+	for(var/z in GLOB.using_map.player_levels)
 		max_z = max(z, max_z)
 	return max_z
+
+/proc/living_observers_present(var/list/zlevels)
+	if(LAZYLEN(zlevels))
+		for(var/mob/M in GLOB.player_list) //if a tree ticks on the empty zlevel does it really tick
+			if(M.stat != DEAD) //(no it doesn't)
+				var/turf/T = get_turf(M)
+				if(T && (T.z in zlevels))
+					return TRUE
+	return FALSE
 
 /proc/get_area(O)
 	var/turf/loc = get_turf(O)
@@ -43,11 +43,11 @@
 	if (isarea(A))
 		return A
 
-/proc/in_range(source, user)
+/proc/in_range(atom/source, mob/user)
 	if(get_dist(source, user) <= 1)
-		return 1
+		return TRUE
 
-	return 0 //not in range and not telekinetic
+	return FALSE //not in range and not telekinetic
 
 // Like view but bypasses luminosity check
 
@@ -62,19 +62,25 @@
 	return heard
 
 /proc/isStationLevel(var/level)
-	return level in config.station_levels
+	return level in GLOB.using_map.station_levels
 
 /proc/isNotStationLevel(var/level)
 	return !isStationLevel(level)
 
 /proc/isPlayerLevel(var/level)
-	return level in config.player_levels
+	return level in GLOB.using_map.player_levels
 
 /proc/isAdminLevel(var/level)
-	return level in config.admin_levels
+	return level in GLOB.using_map.admin_levels
 
 /proc/isNotAdminLevel(var/level)
 	return !isAdminLevel(level)
+
+/proc/isContactLevel(var/level)
+	return level in GLOB.using_map.contact_levels
+
+/proc/isEscapeLevel(var/level)
+	return level in GLOB.using_map.escape_levels
 
 /proc/circlerange(center=usr,radius=3)
 
@@ -123,17 +129,18 @@
 	return dist
 
 /proc/circlerangeturfs(center=usr,radius=3)
-
 	var/turf/centerturf = get_turf(center)
-	var/list/turfs = new/list()
+	. = list()
+	if(!centerturf)
+		return
+
 	var/rsq = radius * (radius+0.5)
 
 	for(var/turf/T in range(radius, centerturf))
 		var/dx = T.x - centerturf.x
 		var/dy = T.y - centerturf.y
 		if(dx*dx + dy*dy <= rsq)
-			turfs += T
-	return turfs
+			. += T
 
 /proc/circleviewturfs(center=usr,radius=3)		//Is there even a diffrence between this proc and circlerangeturfs()?
 
@@ -174,7 +181,7 @@
 					else
 						L |= I
 
-		else if(istype(I,/obj/))
+		else if(isobj(I))
 			if(!sight_check || isInSight(I, O))
 				L |= recursive_content_check(I, L, recursion_limit - 1, client_check, sight_check, include_mobs, include_objects)
 				if(include_objects)
@@ -201,7 +208,7 @@
 				var/mob/M = I
 				if(M.client)
 					hear += M
-		else if(istype(I,/obj/))
+		else if(isobj(I))
 			hear |= recursive_content_check(I, hear, 3, 1, 0, include_mobs, include_objects)
 			if(include_objects)
 				hear += I
@@ -235,51 +242,74 @@
 
 
 	// Try to find all the players who can hear the message
-	for(var/i = 1; i <= player_list.len; i++)
-		var/mob/M = player_list[i]
+	for(var/i = 1; i <= GLOB.player_list.len; i++)
+		var/mob/M = GLOB.player_list[i]
 		if(M)
 			var/turf/ear = get_turf(M)
 			if(ear)
 				// Ghostship is magic: Ghosts can hear radio chatter from anywhere
-				if(speaker_coverage[ear] || (istype(M, /mob/dead/observer) && (M.client) && (M.client.prefs.toggles & CHAT_GHOSTRADIO)))
+				if(speaker_coverage[ear] || (isghost(M) && M.get_preference_value(/datum/client_preference/ghost_radio) == GLOB.PREF_ALL_CHATTER))
 					. |= M		// Since we're already looping through mobs, why bother using |= ? This only slows things down.
 	return .
 
-#define SIGN(X) ((X<0)?-1:1)
+/proc/get_mobs_and_objs_in_view_fast(var/turf/T, var/range, var/list/mobs, var/list/objs, var/checkghosts = null)
 
-proc
-	inLineOfSight(X1,Y1,X2,Y2,Z=1,PX1=16.5,PY1=16.5,PX2=16.5,PY2=16.5)
-		var/turf/T
-		if(X1==X2)
-			if(Y1==Y2)
-				return 1 //Light cannot be blocked on same tile
-			else
-				var/s = SIGN(Y2-Y1)
-				Y1+=s
-				while(Y1!=Y2)
-					T=locate(X1,Y1,Z)
-					if(T.opacity)
-						return 0
-					Y1+=s
+	var/list/hear = dview(range,T,INVISIBILITY_MAXIMUM)
+	var/list/hearturfs = list()
+
+	for(var/atom/movable/AM in hear)
+		if(ismob(AM))
+			mobs += AM
+			hearturfs += get_turf(AM)
+		else if(isobj(AM))
+			objs += AM
+			hearturfs += get_turf(AM)
+
+	for(var/mob/M in GLOB.player_list)
+		if(checkghosts && M.stat == DEAD && M.get_preference_value(checkghosts) != GLOB.PREF_NEARBY)
+			mobs |= M
+		else if(get_turf(M) in hearturfs)
+			mobs |= M
+
+	for(var/obj/O in GLOB.listening_objects)
+		if(get_turf(O) in hearturfs)
+			objs |= O
+
+
+
+
+
+/proc/inLineOfSight(X1,Y1,X2,Y2,Z=1,PX1=16.5,PY1=16.5,PX2=16.5,PY2=16.5)
+	var/turf/T
+	if(X1==X2)
+		if(Y1==Y2)
+			return 1 //Light cannot be blocked on same tile
 		else
-			var/m=(32*(Y2-Y1)+(PY2-PY1))/(32*(X2-X1)+(PX2-PX1))
-			var/b=(Y1+PY1/32-0.015625)-m*(X1+PX1/32-0.015625) //In tiles
-			var/signX = SIGN(X2-X1)
-			var/signY = SIGN(Y2-Y1)
-			if(X1<X2)
-				b+=m
-			while(X1!=X2 || Y1!=Y2)
-				if(round(m*X1+b-Y1))
-					Y1+=signY //Line exits tile vertically
-				else
-					X1+=signX //Line exits tile horizontally
+			var/s = SIMPLE_SIGN(Y2-Y1)
+			Y1+=s
+			while(Y1!=Y2)
 				T=locate(X1,Y1,Z)
 				if(T.opacity)
 					return 0
-		return 1
-#undef SIGN
+				Y1+=s
+	else
+		var/m=(32*(Y2-Y1)+(PY2-PY1))/(32*(X2-X1)+(PX2-PX1))
+		var/b=(Y1+PY1/32-0.015625)-m*(X1+PX1/32-0.015625) //In tiles
+		var/signX = SIMPLE_SIGN(X2-X1)
+		var/signY = SIMPLE_SIGN(Y2-Y1)
+		if(X1<X2)
+			b+=m
+		while(X1!=X2 || Y1!=Y2)
+			if(round(m*X1+b-Y1))
+				Y1+=signY //Line exits tile vertically
+			else
+				X1+=signX //Line exits tile horizontally
+			T=locate(X1,Y1,Z)
+			if(T.opacity)
+				return 0
+	return 1
 
-proc/isInSight(var/atom/A, var/atom/B)
+/proc/isInSight(var/atom/A, var/atom/B)
 	var/turf/Aturf = get_turf(A)
 	var/turf/Bturf = get_turf(B)
 
@@ -308,7 +338,7 @@ proc/isInSight(var/atom/A, var/atom/B)
 			return get_step(start, EAST)
 
 /proc/get_mob_by_key(var/key)
-	for(var/mob/M in mob_list)
+	for(var/mob/M in SSmobs.mob_list)
 		if(M.ckey == lowertext(key))
 			return M
 	return null
@@ -320,24 +350,10 @@ proc/isInSight(var/atom/A, var/atom/B)
 	var/list/candidates = list() //List of candidate KEYS to assume control of the new larva ~Carn
 	var/i = 0
 	while(candidates.len <= 0 && i < 5)
-		for(var/mob/dead/observer/G in player_list)
+		for(var/mob/observer/ghost/G in GLOB.player_list)
 			if(((G.client.inactivity/10)/60) <= buffer + i) // the most active players are more likely to become an alien
 				if(!(G.mind && G.mind.current && G.mind.current.stat != DEAD))
 					candidates += G.key
-		i++
-	return candidates
-
-// Same as above but for alien candidates.
-
-/proc/get_alien_candidates()
-	var/list/candidates = list() //List of candidate KEYS to assume control of the new larva ~Carn
-	var/i = 0
-	while(candidates.len <= 0 && i < 5)
-		for(var/mob/dead/observer/G in player_list)
-			if(MODE_XENOMORPH in G.client.prefs.be_special_role)
-				if(((G.client.inactivity/10)/60) <= ALIEN_SELECT_AFK_BUFFER + i) // the most active players are more likely to become an alien
-					if(!(G.mind && G.mind.current && G.mind.current.stat != DEAD))
-						candidates += G.key
 		i++
 	return candidates
 
@@ -351,7 +367,7 @@ proc/isInSight(var/atom/A, var/atom/B)
 
 /proc/Show2Group4Delay(obj/O, list/group, delay=0)
 	if(!isobj(O))	return
-	if(!group)	group = clients
+	if(!group)	group = GLOB.clients
 	for(var/client/C in group)
 		C.screen += O
 	if(delay)
@@ -366,7 +382,7 @@ proc/isInSight(var/atom/A, var/atom/B)
 		for(var/client/C in show_to)
 			C.images -= I
 
-datum/projectile_data
+/datum/projectile_data
 	var/src_x
 	var/src_y
 	var/time
@@ -472,7 +488,7 @@ datum/projectile_data
 /proc/getOPressureDifferential(var/turf/loc)
 	var/minp=16777216;
 	var/maxp=0;
-	for(var/dir in cardinal)
+	for(var/dir in GLOB.cardinal)
 		var/turf/simulated/T=get_turf(get_step(loc,dir))
 		var/cp=0
 		if(T && istype(T) && T.zone)
@@ -493,7 +509,7 @@ datum/projectile_data
 
 /proc/getCardinalAirInfo(var/turf/loc, var/list/stats=list("temperature"))
 	var/list/temps = new/list(4)
-	for(var/dir in cardinal)
+	for(var/dir in GLOB.cardinal)
 		var/direction
 		switch(dir)
 			if(NORTH)
@@ -533,4 +549,17 @@ datum/projectile_data
 	return seconds * 10
 
 /proc/round_is_spooky(var/spookiness_threshold = config.cult_ghostwriter_req_cultists)
-	return (cult.current_antagonists.len > spookiness_threshold)
+	return (GLOB.cult.current_antagonists.len > spookiness_threshold)
+
+/proc/getviewsize(view)
+	var/viewX
+	var/viewY
+	if(isnum(view))
+		var/totalviewrange = 1 + 2 * view
+		viewX = totalviewrange
+		viewY = totalviewrange
+	else
+		var/list/viewrangelist = splittext(view,"x")
+		viewX = text2num(viewrangelist[1])
+		viewY = text2num(viewrangelist[2])
+	return list(viewX, viewY)

@@ -3,7 +3,7 @@
 	name = "automatic pipe layer"
 	icon = 'icons/obj/stationobjs.dmi'
 	icon_state = "pipe_d"
-	density = 1
+	density = TRUE
 	var/turf/old_turf
 	var/old_dir
 	var/on = 0
@@ -12,8 +12,8 @@
 	var/P_type_t = ""
 	var/max_metal = 50
 	var/metal = 10
-	var/obj/item/weapon/wrench/W
-	var/list/Pipes = list("regular pipes"=0,"scrubbers pipes"=31,"supply pipes"=29,"heat exchange pipes"=2)
+	var/obj/item/wrench/W
+	var/list/Pipes = list("regular pipes"=0,"scrubbers pipes"=31,"supply pipes"=29,"heat exchange pipes"=2, "fuel pipes"=45)
 
 /obj/machinery/pipelayer/New()
 	W = new(src)
@@ -29,40 +29,40 @@
 	old_turf = new_turf
 	old_dir = turn(M_Dir,180)
 
-/obj/machinery/pipelayer/attack_hand(mob/user as mob)
+/obj/machinery/pipelayer/interface_interact(mob/user)
 	if(!metal&&!on)
-		user << "<span class='warning'>\The [src] doesn't work without metal.</span>"
-		return
+		to_chat(user, "<span class='warning'>\The [src] doesn't work without metal.</span>")
+		return TRUE
 	on=!on
 	user.visible_message("<span class='notice'>[user] has [!on?"de":""]activated \the [src].</span>", "<span class='notice'>You [!on?"de":""]activate \the [src].</span>")
-	return
+	return TRUE
 
 /obj/machinery/pipelayer/attackby(var/obj/item/W as obj, var/mob/user as mob)
 
-	if (istype(W, /obj/item/weapon/wrench))
+	if(isWrench(W))
 		P_type_t = input("Choose pipe type", "Pipe type") as null|anything in Pipes
 		P_type = Pipes[P_type_t]
 		user.visible_message("<span class='notice'>[user] has set \the [src] to manufacture [P_type_t].</span>", "<span class='notice'>You set \the [src] to manufacture [P_type_t].</span>")
 		return
 
-	if(istype(W, /obj/item/weapon/crowbar))
+	if(isCrowbar(W))
 		a_dis=!a_dis
 		user.visible_message("<span class='notice'>[user] has [!a_dis?"de":""]activated auto-dismantling.</span>", "<span class='notice'>You [!a_dis?"de":""]activate auto-dismantling.</span>")
 		return
 
-	if(istype(W, /obj/item/stack/material) && W.get_material_name() == DEFAULT_WALL_MATERIAL)
+	if(istype(W, /obj/item/stack/material) && W.get_material_name() == MATERIAL_STEEL)
 
 		var/result = load_metal(W)
 		if(isnull(result))
-			user << "<span class='warning'>Unable to load [W] - no metal found.</span>"
+			to_chat(user, "<span class='warning'>Unable to load [W] - no metal found.</span>")
 		else if(!result)
-			user << "<span class='notice'>\The [src] is full.</span>"
+			to_chat(user, "<span class='notice'>\The [src] is full.</span>")
 		else
 			user.visible_message("<span class='notice'>[user] has loaded metal into \the [src].</span>", "<span class='notice'>You load metal into \the [src]</span>")
 
 		return
 
-	if(istype(W, /obj/item/weapon/screwdriver))
+	if(isScrewdriver(W))
 		if(metal)
 			var/m = round(input(usr,"Please specify the amount of metal to remove","Remove metal",min(round(metal),50)) as num, 1)
 			m = min(m, 50)
@@ -74,13 +74,13 @@
 				MM.amount = m
 				user.visible_message("<span class='notice'>[user] removes [m] sheet\s of metal from the \the [src].</span>", "<span class='notice'>You remove [m] sheet\s of metal from \the [src]</span>")
 		else
-			user << "\The [src] is empty."
+			to_chat(user, "\The [src] is empty.")
 		return
 	..()
 
 /obj/machinery/pipelayer/examine(mob/user)
-	..()
-	user << "\The [src] has [metal] sheet\s, is set to produce [P_type_t], and auto-dismantling is [!a_dis?"de":""]activated."
+	. = ..()
+	to_chat(user, "\The [src] has [metal] sheet\s, is set to produce [P_type_t], and auto-dismantling is [!a_dis?"de":""]activated.")
 
 /obj/machinery/pipelayer/proc/reset()
 	on=0
@@ -119,17 +119,15 @@
 	if(!use_metal(0.25))
 		return reset()
 	var/fdirn = turn(M_Dir,180)
-	var/p_type
 	var/p_dir
 
 	if (fdirn!=old_dir)
-		p_type=1+P_type
 		p_dir=old_dir+M_Dir
 	else
-		p_type=0+P_type
 		p_dir=M_Dir
 
-	var/obj/item/pipe/P = new (w_turf, pipe_type=p_type, dir=p_dir)
+	var/obj/item/pipe/P = new(w_turf)
+	P.set_dir(p_dir)
 	P.attackby(W , src)
 
 	return 1

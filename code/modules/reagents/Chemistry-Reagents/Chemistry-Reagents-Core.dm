@@ -1,14 +1,33 @@
 /datum/reagent/blood
-	data = new/list("donor" = null, "viruses" = null, "species" = "Human", "blood_DNA" = null, "blood_type" = null, "blood_colour" = "#A10808", "resistances" = null, "trace_chem" = null, "antibodies" = list())
+	data = new/list(
+		"donor" = null,
+		"species" = SPECIES_HUMAN,
+		"blood_DNA" = null,
+		"blood_type" = null,
+		"blood_colour" = COLOR_BLOOD_HUMAN,
+		"trace_chem" = null,
+		"dose_chem" = null,
+		"has_oxy" = 1
+	)
 	name = "Blood"
-	id = "blood"
+	description = "A red (or blue) liquid commonly found inside animals, most of whom are pretty insistent about it being left where you found it."
 	reagent_state = LIQUID
 	metabolism = REM * 5
-	color = "#C80000"
-
-	glass_icon_state = "glass_red"
-	glass_name = "glass of tomato juice"
+	color = "#c80000"
+	scannable = 1
+	taste_description = "iron"
+	taste_mult = 1.3
+	glass_name = "tomato juice"
 	glass_desc = "Are you sure this is tomato juice?"
+	value = 2
+
+	chilling_products = list(/datum/reagent/coagulated_blood)
+	chilling_point = 249
+	chilling_message = "coagulates and clumps together."
+
+	heating_products = list(/datum/reagent/coagulated_blood)
+	heating_point = 318
+	heating_message = "coagulates and clumps together."
 
 /datum/reagent/blood/initialize_data(var/newdata)
 	..()
@@ -16,136 +35,86 @@
 		color = data["blood_colour"]
 	return
 
+/datum/reagent/blood/proc/sync_to(var/mob/living/carbon/C)
+	data = C.get_blood_data()
+	color = data["blood_colour"]
+
 /datum/reagent/blood/get_data() // Just in case you have a reagent that handles data differently.
 	var/t = data.Copy()
-	if(t["virus2"])
-		var/list/v = t["virus2"]
-		t["virus2"] = v.Copy()
 	return t
-
-/datum/reagent/blood/mix_data(var/newdata, var/newamount) // You have a reagent with data, and new reagent with its own data get added, how do you deal with that?
-	if(data["viruses"] || newdata["viruses"])
-		var/list/mix1 = data["viruses"]
-		var/list/mix2 = newdata["viruses"]
-		var/list/to_mix = list() // Stop issues with the list changing during mixing.
-		for(var/datum/disease/advance/AD in mix1)
-			to_mix += AD
-		for(var/datum/disease/advance/AD in mix2)
-			to_mix += AD
-		var/datum/disease/advance/AD = Advance_Mix(to_mix)
-		if(AD)
-			var/list/preserve = list(AD)
-			for(var/D in data["viruses"])
-				if(!istype(D, /datum/disease/advance))
-					preserve += D
-			data["viruses"] = preserve
 
 /datum/reagent/blood/touch_turf(var/turf/simulated/T)
 	if(!istype(T) || volume < 3)
 		return
-	if(!data["donor"] || istype(data["donor"], /mob/living/carbon/human))
+	var/weakref/W = data["donor"]
+	if (!W)
 		blood_splatter(T, src, 1)
-	else if(istype(data["donor"], /mob/living/carbon/alien))
+		return
+	W = W.resolve()
+	if(ishuman(W))
+		blood_splatter(T, src, 1)
+	else if(isalien(W))
 		var/obj/effect/decal/cleanable/blood/B = blood_splatter(T, src, 1)
 		if(B)
 			B.blood_DNA["UNKNOWN DNA STRUCTURE"] = "X*"
 
 /datum/reagent/blood/affect_ingest(var/mob/living/carbon/M, var/alien, var/removed)
-	if(dose > 5)
+
+	if(M.chem_doses[type] > 5)
 		M.adjustToxLoss(removed)
-	if(dose > 15)
+	if(M.chem_doses[type] > 15)
 		M.adjustToxLoss(removed)
-	if(data && data["viruses"])
-		for(var/datum/disease/D in data["viruses"])
-			if(D.spread_type == SPECIAL || D.spread_type == NON_CONTAGIOUS)
-				continue
-			if(D.spread_type in list(CONTACT_FEET, CONTACT_HANDS, CONTACT_GENERAL))
-				M.contract_disease(D)
-	if(data && data["virus2"])
-		var/list/vlist = data["virus2"]
-		if(vlist.len)
-			for(var/ID in vlist)
-				var/datum/disease2/disease/V = vlist[ID]
-				if(V.spreadtype == "Contact")
-					infect_virus2(M, V.getcopy())
 
 /datum/reagent/blood/affect_touch(var/mob/living/carbon/M, var/alien, var/removed)
-	if(alien == IS_MACHINE)
-		return
-	if(data && data["viruses"])
-		for(var/datum/disease/D in data["viruses"])
-			if(D.spread_type == SPECIAL || D.spread_type == NON_CONTAGIOUS)
-				continue
-			if(D.spread_type in list(CONTACT_FEET, CONTACT_HANDS, CONTACT_GENERAL))
-				M.contract_disease(D)
-	if(data && data["virus2"])
-		var/list/vlist = data["virus2"]
-		if(vlist.len)
-			for(var/ID in vlist)
-				var/datum/disease2/disease/V = vlist[ID]
-				if(V.spreadtype == "Contact")
-					infect_virus2(M, V.getcopy())
-	if(data && data["antibodies"])
-		M.antibodies |= data["antibodies"]
+	if(ishuman(M))
+		var/mob/living/carbon/human/H = M
+		if(H.isSynthetic())
+			return
 
 /datum/reagent/blood/affect_blood(var/mob/living/carbon/M, var/alien, var/removed)
 	M.inject_blood(src, volume)
 	remove_self(volume)
 
-/datum/reagent/vaccine
-	name = "Vaccine"
-	id = "vaccine"
-	reagent_state = LIQUID
-	color = "#C81040"
-
-/datum/reagent/vaccine/affect_blood(var/mob/living/carbon/M, var/alien, var/removed)
-	if(data)
-		for(var/datum/disease/D in M.viruses)
-			if(istype(D, /datum/disease/advance))
-				var/datum/disease/advance/A = D
-				if(A.GetDiseaseID() == data)
-					D.cure()
-			else
-				if(D.type == data)
-					D.cure()
-
-		M.resistances += data
-	return
-
-// pure concentrated antibodies
-/datum/reagent/antibodies
-	data = list("antibodies"=list())
-	name = "Antibodies"
-	id = "antibodies"
-	reagent_state = LIQUID
-	color = "#0050F0"
-
-/datum/reagent/antibodies/affect_blood(var/mob/living/carbon/M, var/alien, var/removed)
-	if(src.data)
-		M.antibodies |= src.data["antibodies"]
-	..()
-
-#define WATER_LATENT_HEAT 19000 // How much heat is removed when applied to a hot turf, in J/unit (19000 makes 120 u of water roughly equivalent to 4L)
+// Water!
+#define WATER_LATENT_HEAT 9500 // How much heat is removed when applied to a hot turf, in J/unit (9500 makes 120 u of water roughly equivalent to 2L
 /datum/reagent/water
 	name = "Water"
-	id = "water"
-	description = "A ubiquitous chemical substance that is composed of hydrogen and oxygen."
+	description = "A ubiquitous chemical substance composed of hydrogen and oxygen."
 	reagent_state = LIQUID
-	color = "#0064C877"
+	color = "#3073b6"
+	alpha = 120
+	scannable = 1
 	metabolism = REM * 10
-
-	glass_icon_state = "glass_clear"
-	glass_name = "glass of water"
+	taste_description = "water"
+	glass_name = "water"
 	glass_desc = "The father of all refreshments."
+	chilling_products = list(/datum/reagent/drink/ice)
+	chilling_point = T0C
+	heating_products = list(/datum/reagent/water/boiling)
+	heating_point = T100C
+	value = 0
+
+/datum/reagent/water/affect_blood(var/mob/living/carbon/M, var/alien, var/removed)
+	if(!istype(M, /mob/living/carbon/slime) && alien != IS_SLIME)
+		return
+	M.adjustToxLoss(2 * removed)
+
+/datum/reagent/water/affect_ingest(var/mob/living/carbon/M, var/alien, var/removed)
+	if(!istype(M, /mob/living/carbon/slime) && alien != IS_SLIME)
+		return
+	M.adjustToxLoss(2 * removed)
+
+/datum/reagent/water/affect_ingest(var/mob/living/carbon/M, var/alien, var/removed)
+	M.adjust_hydration(removed * 10)
 
 /datum/reagent/water/touch_turf(var/turf/simulated/T)
 	if(!istype(T))
 		return
 
 	var/datum/gas_mixture/environment = T.return_air()
-	var/min_temperature = T0C + 100 // 100C, the boiling point of water
+	var/min_temperature = T20C + rand(0, 20) // Room temperature + some variance. An actual diminishing return would be better, but this is *like* that. In a way. . This has the potential for weird behavior, but I says fuck it. Water grenades for everyone.
 
-	var/hotspot = (locate(/obj/fire) in T)
+	var/hotspot = (locate(/obj/hotspot) in T)
 	if(hotspot && !istype(T, /turf/space))
 		var/datum/gas_mixture/lowertemp = T.remove_air(T:air:total_moles)
 		lowertemp.temperature = max(min(lowertemp.temperature-2000, lowertemp.temperature / 2), 0)
@@ -154,21 +123,35 @@
 		qdel(hotspot)
 
 	if (environment && environment.temperature > min_temperature) // Abstracted as steam or something
-		var/removed_heat = between(0, volume * WATER_LATENT_HEAT, -environment.get_thermal_energy_change(min_temperature))
+		var/removed_heat = clamp(volume * WATER_LATENT_HEAT, 0, -environment.get_thermal_energy_change(min_temperature))
 		environment.add_thermal_energy(-removed_heat)
-		if (prob(5))
+		if (prob(5) && environment && environment.temperature > T100C)
 			T.visible_message("<span class='warning'>The water sizzles as it lands on \the [T]!</span>")
 
 	else if(volume >= 10)
-		T.wet_floor(1)
+		var/turf/simulated/S = T
+		S.wet_floor(8, TRUE)
 
 /datum/reagent/water/touch_obj(var/obj/O)
-	if(istype(O, /obj/item/weapon/reagent_containers/food/snacks/monkeycube))
-		var/obj/item/weapon/reagent_containers/food/snacks/monkeycube/cube = O
+	if(istype(O, /obj/item/reagent_containers/food/snacks/monkeycube))
+		var/obj/item/reagent_containers/food/snacks/monkeycube/cube = O
 		if(!cube.wrapped)
 			cube.Expand()
+	if(istype(O, /obj/effect/turf_fire))
+		var/obj/effect/turf_fire/TF = O
+		TF.AddPower(-volume)
+		if(TF.fire_power <= 0)
+			qdel(TF)
 
 /datum/reagent/water/touch_mob(var/mob/living/L, var/amount)
+	var/mob/living/carbon/human/H = L
+	if(istype(H))
+		var/obj/item/clothing/mask/smokable/S = H.wear_mask
+		if (istype(S) && S.lit)
+			var/obj/item/clothing/C = H.head
+			if (!istype(C) || !(C.body_parts_covered & FACE))
+				S.extinguish()
+
 	if(istype(L))
 		var/needed = L.fire_stacks * 10
 		if(amount > needed)
@@ -180,27 +163,59 @@
 			remove_self(amount)
 
 /datum/reagent/water/affect_touch(var/mob/living/carbon/M, var/alien, var/removed)
-	if(istype(M, /mob/living/carbon/slime))
-		var/mob/living/carbon/slime/S = M
-		S.adjustToxLoss(8 * removed) // Babies have 150 health, adults have 200; So, 10 units and 13.5
-		if(!S.client)
-			if(S.Target) // Like cats
-				S.Target = null
-				++S.Discipline
-		if(dose == removed)
-			S.visible_message("<span class='warning'>[S]'s flesh sizzles where the water touches it!</span>", "<span class='danger'>Your flesh burns in the water!</span>")
+	if(!istype(M, /mob/living/carbon/slime) && alien != IS_SLIME)
+		return
+	M.adjustToxLoss(10 * removed)	// Babies have 150 health, adults have 200; So, 15 units and 20
+	var/mob/living/carbon/slime/S = M
+	if(!S.client && istype(S))
+		if(S.Target) // Like cats
+			S.Target = null
+		if(S.Victim)
+			S.Feedstop()
+	if(M.chem_doses[type] == removed)
+		M.visible_message("<span class='warning'>[S]'s flesh sizzles where the water touches it!</span>", "<span class='danger'>Your flesh burns in the water!</span>")
+		M.confused = max(M.confused, 2)
 
+/datum/reagent/water/boiling
+	name = "Boiling water"
+	chilling_products = list(/datum/reagent/water)
+	chilling_point =   99 CELSIUS
+	chilling_message = "stops boiling."
+	heating_products =  list(null)
+	heating_point =    null
+
+// Ice is a drink for some reason.
+/datum/reagent/drink/ice
+	name = "Ice"
+	description = "Frozen water, your dentist wouldn't like you chewing this."
+	taste_description = "ice"
+	taste_mult = 1.5
+	reagent_state = SOLID
+	color = "#619494"
+	adj_temp = -5
+	hydration = 10
+
+	glass_name = "ice"
+	glass_desc = "Generally, you're supposed to put something else in there too..."
+	glass_icon = DRINK_ICON_NOISY
+
+	heating_message = "cracks and melts."
+	heating_products = list(/datum/reagent/water)
+	heating_point = 299 // This is about 26C, higher than the actual melting point of ice but allows drinks to be made properly without weird workarounds.
+
+// Fuel.
 /datum/reagent/fuel
 	name = "Welding fuel"
-	id = "fuel"
-	description = "Required for welders. Flamable."
+	description = "A stable hydrazine-based compound whose exact manufacturing specifications are a closely-guarded secret. One of the most common fuels in human space. Extremely flammable."
+	taste_description = "gross metal"
 	reagent_state = LIQUID
 	color = "#660000"
 	touch_met = 5
 
-	glass_icon_state = "dr_gibb_glass"
-	glass_name = "glass of welder fuel"
+	glass_name = "welder fuel"
 	glass_desc = "Unless you are an industrial tool, this is probably not safe for consumption."
+	value = 6.8
+	accelerant_quality = 10
 
 /datum/reagent/fuel/touch_turf(var/turf/T)
 	new /obj/effect/decal/cleanable/liquid_fuel(T, volume)
@@ -214,3 +229,27 @@
 	if(istype(L))
 		L.adjust_fire_stacks(amount / 10) // Splashing people with welding fuel to make them easy to ignite!
 
+/datum/reagent/fuel/ex_act(obj/item/reagent_containers/holder, severity)
+	if(volume <= 50)
+		return
+	var/turf/T = get_turf(holder)
+	var/datum/gas_mixture/products = new(_temperature = 5 * PHORON_FLASHPOINT)
+	var/gas_moles = 3 * volume
+	products.adjust_multi(GAS_NO, 0.1 * gas_moles, GAS_NO2, 0.1 * gas_moles, GAS_NITROGEN, 0.6 * gas_moles, GAS_HYDROGEN, 0.02 * gas_moles)
+	T.assume_air(products)
+	if(volume > 500)
+		explosion(T,1,2,4)
+	else if(volume > 100)
+		explosion(T,0,1,3)
+	else if(volume > 50)
+		explosion(T,-1,1,2)
+	remove_self(volume)
+
+/datum/reagent/coagulated_blood
+	name = "Coagulated Blood"
+	color = "#aa0000"
+	taste_description = "chewy iron"
+	taste_mult = 1.5
+	description = "When exposed to unsuitable conditions, such as the floor or an oven, blood becomes coagulated and useless for transfusions. It's great for making blood pudding, though."
+	glass_name = "tomato salsa"
+	glass_desc = "Are you sure this is tomato salsa?"

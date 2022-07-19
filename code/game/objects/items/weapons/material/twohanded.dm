@@ -16,8 +16,9 @@
 /*
  * Twohanded
  */
-/obj/item/weapon/material/twohanded
-	w_class = 4
+/obj/item/material/twohanded
+	w_class = ITEM_SIZE_HUGE
+	slot_flags = SLOT_BACK
 	var/wielded = 0
 	var/force_wielded = 0
 	var/force_unwielded
@@ -26,144 +27,65 @@
 	var/base_icon
 	var/base_name
 	var/unwielded_force_divisor = 0.25
+	var/wielded_parry_bonus = 20
 
-/obj/item/weapon/material/twohanded/proc/unwield()
-	wielded = 0
-	force = force_unwielded
-	name = "[base_name]"
+/obj/item/material/twohanded/update_twohanding()
+	var/mob/living/M = loc
+	if(istype(M) && M.can_wield_item(src) && is_held_twohanded(M))
+		wielded = 1
+		force = force_wielded
+	else
+		wielded = 0
+		force = force_unwielded
 	update_icon()
+	..()
 
-/obj/item/weapon/material/twohanded/proc/wield()
-	wielded = 1
-	force = force_wielded
-	name = "[base_name] (Wielded)"
-	update_icon()
-
-/obj/item/weapon/material/twohanded/update_force()
+/obj/item/material/twohanded/update_force()
+	..()
 	base_name = name
-	if(sharp || edge)
-		force_wielded = material.get_edge_damage()
-	else
-		force_wielded = material.get_blunt_damage()
-	force_wielded = round(force_wielded*force_divisor)
-	force_unwielded = round(force_wielded*unwielded_force_divisor)
+	force_unwielded = round(force*unwielded_force_divisor)
+	force_wielded = force
 	force = force_unwielded
-	throwforce = round(force*thrown_force_divisor)
-	//world << "[src] has unwielded force [force_unwielded], wielded force [force_wielded] and throwforce [throwforce] when made from default material [material.name]"
 
-/obj/item/weapon/material/twohanded/New()
+
+/obj/item/material/twohanded/New()
 	..()
 	update_icon()
 
-/obj/item/weapon/material/twohanded/mob_can_equip(M as mob, slot)
-	//Cannot equip wielded items.
+/obj/item/material/twohanded/get_parry_chance(mob/user)
+	. = ..()
 	if(wielded)
-		M << "<span class='warning'>Unwield the [base_name] first!</span>"
-		return 0
+		. += wielded_parry_bonus
 
-	return ..()
-
-/obj/item/weapon/material/twohanded/dropped(mob/user as mob)
-	//handles unwielding a twohanded weapon when dropped as well as clearing up the offhand
-	if(user)
-		var/obj/item/weapon/material/twohanded/O = user.get_inactive_hand()
-		if(istype(O))
-			O.unwield()
-	return	unwield()
-
-//Allow a small chance of parrying melee attacks when wielded - maybe generalize this to other weapons someday
-/obj/item/weapon/material/twohanded/handle_shield(mob/user, var/damage, atom/damage_source = null, mob/attacker = null, var/def_zone = null, var/attack_text = "the attack")
-	if(wielded && default_parry_check(user, attacker, damage_source) && prob(15))
-		user.visible_message("<span class='danger'>\The [user] parries [attack_text] with \the [src]!</span>")
-		playsound(user.loc, 'sound/weapons/punchmiss.ogg', 50, 1)
-		return 1
-	return 0
-
-/obj/item/weapon/material/twohanded/update_icon()
-	icon_state = "[base_icon][wielded]"
-	item_state = icon_state
-
-/obj/item/weapon/material/twohanded/pickup(mob/user)
-	unwield()
-
-/obj/item/weapon/material/twohanded/attack_self(mob/user as mob)
-
+/obj/item/material/twohanded/on_update_icon()
 	..()
-
-	if(istype(user, /mob/living/carbon/human))
-		var/mob/living/carbon/human/H = user
-		if(issmall(H))
-			user << "<span class='warning'>It's too heavy for you to wield fully.</span>"
-			return
-	else
-		return
-
-	if(wielded) //Trying to unwield it
-		unwield()
-		user << "<span class='notice'>You are now carrying the [name] with one hand.</span>"
-		if (src.unwieldsound)
-			playsound(src.loc, unwieldsound, 50, 1)
-
-		var/obj/item/weapon/material/twohanded/offhand/O = user.get_inactive_hand()
-		if(O && istype(O))
-			O.unwield()
-
-	else //Trying to wield it
-		if(user.get_inactive_hand())
-			user << "<span class='warning'>You need your other hand to be empty</span>"
-			return
-		wield()
-		user << "<span class='notice'>You grab the [base_name] with both hands.</span>"
-		if (src.wieldsound)
-			playsound(src.loc, wieldsound, 50, 1)
-
-		var/obj/item/weapon/material/twohanded/offhand/O = new(user) ////Let's reserve his other hand~
-		O.name = "[base_name] - offhand"
-		O.desc = "Your second grip on the [base_name]."
-		user.put_in_inactive_hand(O)
-
-	if(istype(user,/mob/living/carbon/human))
-		var/mob/living/carbon/human/H = user
-		H.update_inv_l_hand()
-		H.update_inv_r_hand()
-
-	return
-
-///////////OFFHAND///////////////
-/obj/item/weapon/material/twohanded/offhand
-	w_class = 5
-	icon_state = "offhand"
-	name = "offhand"
-	default_material = "placeholder"
-
-/obj/item/weapon/material/twohanded/offhand/unwield()
-	qdel(src)
-
-/obj/item/weapon/material/twohanded/offhand/wield()
-	qdel(src)
-
-/obj/item/weapon/material/twohanded/offhand/update_icon()
-	return
+	icon_state = "[base_icon][wielded]"
+	item_state_slots[slot_l_hand_str] = icon_state
+	item_state_slots[slot_r_hand_str] = icon_state
+	item_state_slots[slot_back_str] = base_icon
 
 /*
  * Fireaxe
  */
-/obj/item/weapon/material/twohanded/fireaxe  // DEM AXES MAN, marker -Agouri
+/obj/item/material/twohanded/fireaxe  // DEM AXES MAN, marker -Agouri
+	icon = 'icons/obj/weapons/melee_physical.dmi'
 	icon_state = "fireaxe0"
 	base_icon = "fireaxe"
 	name = "fire axe"
 	desc = "Truly, the weapon of a madman. Who would think to fight fire with an axe?"
-	unwielded_force_divisor = 0.25
-	force_divisor = 0.7 // 10/42 with hardness 60 (steel) and 0.25 unwielded divisor
-	sharp = 1
-	edge = 1
-	w_class = 4.0
-	slot_flags = SLOT_BACK
-	force_wielded = 30
+
+	max_force = 60	//for wielded
+	force_multiplier = 0.6
+	unwielded_force_divisor = 0.3
+	attack_cooldown_modifier = 6
+	sharp = TRUE
+	edge = TRUE
 	attack_verb = list("attacked", "chopped", "cleaved", "torn", "cut")
 	applies_material_colour = 0
+	worth_multiplier = 31
+	base_parry_chance = 15
 
-/obj/item/weapon/material/twohanded/fireaxe/afterattack(atom/A as mob|obj|turf|area, mob/user as mob, proximity)
+/obj/item/material/twohanded/fireaxe/afterattack(atom/A as mob|obj|turf|area, mob/user as mob, proximity)
 	if(!proximity) return
 	..()
 	if(A && wielded)
@@ -172,25 +94,71 @@
 			W.shatter()
 		else if(istype(A,/obj/structure/grille))
 			qdel(A)
-		else if(istype(A,/obj/effect/plant))
-			var/obj/effect/plant/P = A
+		else if(istype(A,/obj/effect/vine))
+			var/obj/effect/vine/P = A
 			P.die_off()
 
+/obj/item/material/twohanded/fireaxe/IsHatchet()
+	return TRUE
+
 //spears, bay edition
-/obj/item/weapon/material/twohanded/spear
+/obj/item/material/twohanded/spear
+	icon = 'icons/obj/weapons/melee_physical.dmi'
 	icon_state = "spearglass0"
 	base_icon = "spearglass"
 	name = "spear"
 	desc = "A haphazardly-constructed yet still deadly weapon of ancient design."
-	force = 10
-	w_class = 4.0
-	slot_flags = SLOT_BACK
-	force_wielded = 0.75           // 22 when wielded with hardness 15 (glass)
-	unwielded_force_divisor = 0.65 // 14 when unwielded based on above
-	thrown_force_divisor = 1.5 // 20 when thrown with weight 15 (glass)
-	throw_speed = 3
-	edge = 1
-	sharp = 1
+	max_force = 20	//for wielded
+	applies_material_colour = 0
+	force_multiplier = 0.33 // 12/19 with hardness 60 (steel) or 10/16 with hardness 50 (glass)
+	unwielded_force_divisor = 0.20
+	thrown_force_multiplier = 1.5 // 20 when thrown with weight 15 (glass)
+	throw_speed = 6
+	sharp = TRUE
 	hitsound = 'sound/weapons/bladeslice.ogg'
 	attack_verb = list("attacked", "poked", "jabbed", "torn", "gored")
-	default_material = "glass"
+	default_material = MATERIAL_GLASS
+	does_spin = FALSE
+	worth_multiplier = 7
+	base_parry_chance = 30
+
+/obj/item/material/twohanded/spear/shatter(var/consumed)
+	if(!consumed)
+		new /obj/item/stack/material/rods(get_turf(src), 1)
+		new /obj/item/stack/cable_coil(get_turf(src), 3)
+	..()
+
+/obj/item/material/twohanded/baseballbat
+	name = "bat"
+	desc = "HOME RUN!"
+	icon = 'icons/obj/weapons/melee_physical.dmi'
+	icon_state = "metalbat0"
+	base_icon = "metalbat"
+	item_state = "metalbat"
+	w_class = ITEM_SIZE_LARGE
+	throwforce = 7
+	attack_verb = list("smashed", "beaten", "slammed", "smacked", "struck", "battered", "bonked")
+	hitsound = 'sound/weapons/genhit3.ogg'
+	default_material = MATERIAL_MAPLE
+	max_force = 40	//for wielded
+	force_multiplier = 1.1           // 22 when wielded with weight 20 (steel)
+	unwielded_force_divisor = 0.7 // 15 when unwielded based on above.
+	attack_cooldown_modifier = 1
+	melee_accuracy_bonus = -10
+	base_parry_chance = 30
+
+//Predefined materials go here.
+/obj/item/material/twohanded/baseballbat/metal/New(var/newloc)
+	..(newloc,MATERIAL_ALUMINIUM)
+
+/obj/item/material/twohanded/baseballbat/uranium/New(var/newloc)
+	..(newloc,MATERIAL_URANIUM)
+
+/obj/item/material/twohanded/baseballbat/gold/New(var/newloc)
+	..(newloc,MATERIAL_GOLD)
+
+/obj/item/material/twohanded/baseballbat/platinum/New(var/newloc)
+	..(newloc,MATERIAL_PLATINUM)
+
+/obj/item/material/twohanded/baseballbat/diamond/New(var/newloc)
+	..(newloc,MATERIAL_DIAMOND)

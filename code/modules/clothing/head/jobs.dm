@@ -49,74 +49,128 @@
 	flags_inv = BLOCKHAIR
 	body_parts_covered = HEAD
 
-//Mime
+//Medical
+/obj/item/clothing/head/surgery
+	name = "surgical cap"
+	desc = "A cap surgeons wear during operations. Keeps their hair from tickling your internal organs."
+	icon_state = "surgcap"
+	flags_inv = BLOCKHEADHAIR
+
+/obj/item/clothing/head/surgery/purple
+	name = "purple surgical cap"
+	color = "#7a1b3f"
+
+/obj/item/clothing/head/surgery/blue
+	name = "blue surgical cap"
+	color = "#4891e1"
+
+/obj/item/clothing/head/surgery/green
+	name = "green surgical cap"
+	color = "#255a3e"
+
+/obj/item/clothing/head/surgery/black
+	name = "black surgical cap"
+	color = "#242424"
+
+/obj/item/clothing/head/surgery/navyblue
+	name = "navy blue surgical cap"
+	color = "#1f3a69"
+
+/obj/item/clothing/head/surgery/lilac
+	name = "lilac surgical cap"
+	color = "#c8a2c8"
+
+/obj/item/clothing/head/surgery/teal
+	name = "teal surgical cap"
+	color = "#008080"
+
+/obj/item/clothing/head/surgery/heliodor
+	name = "heliodor surgical cap"
+	color = "#aad539"
+
+//Berets
 /obj/item/clothing/head/beret
 	name = "beret"
 	desc = "A beret, an artists favorite headwear."
 	icon_state = "beret"
 	body_parts_covered = 0
 
-//Security
 /obj/item/clothing/head/beret/sec
-	name = "security beret"
+	name = "corporate security beret"
 	desc = "A beret with the security insignia emblazoned on it. For officers that are more inclined towards style than safety."
-	icon_state = "beret_officer"
+	icon_state = "beret_corporate_red"
+
 /obj/item/clothing/head/beret/sec/navy/officer
-	name = "officer beret"
+	name = "corporate security officer beret"
 	desc = "A navy blue beret with an officer's rank emblem. For officers that are more inclined towards style than safety."
-	icon_state = "beret_navy_officer"
+	icon_state = "beret_corporate_navy_officer"
+
 /obj/item/clothing/head/beret/sec/navy/hos
-	name = "officer beret"
+	name = "corporate security commander beret"
 	desc = "A navy blue beret with a commander's rank emblem. For officers that are more inclined towards style than safety."
-	icon_state = "beret_navy_hos"
+	icon_state = "beret_corporate_navy_hos"
+
 /obj/item/clothing/head/beret/sec/navy/warden
-	name = "warden beret"
+	name = "corporate security warden beret"
 	desc = "A navy blue beret with a warden's rank emblem. For officers that are more inclined towards style than safety."
-	icon_state = "beret_navy_warden"
+	icon_state = "beret_corporate_navy_warden"
+
 /obj/item/clothing/head/beret/sec/corporate/officer
-	name = "officer beret"
+	name = "corporate security officer beret"
 	desc = "A corporate black beret with an officer's rank emblem. For officers that are more inclined towards style than safety."
 	icon_state = "beret_corporate_officer"
+
 /obj/item/clothing/head/beret/sec/corporate/hos
-	name = "officer beret"
+	name = "corporate security commander beret"
 	desc = "A corporate black beret with a commander's rank emblem. For officers that are more inclined towards style than safety."
 	icon_state = "beret_corporate_hos"
+
 /obj/item/clothing/head/beret/sec/corporate/warden
-	name = "warden beret"
+	name = "corporate security warden beret"
 	desc = "A corporate black beret with a warden's rank emblem. For officers that are more inclined towards style than safety."
 	icon_state = "beret_corporate_warden"
+
 /obj/item/clothing/head/beret/engineering
-	name = "engineering beret"
+	name = "corporate engineering beret"
 	desc = "A beret with the engineering insignia emblazoned on it. For engineers that are more inclined towards style than safety."
-	icon_state = "beret_engineering"
+	icon_state = "beret_orange"
+
 /obj/item/clothing/head/beret/purple
 	name = "purple beret"
-	desc = "A stylish, if purple, beret."
+	desc = "A stylish, if purple, beret. For personnel that are more inclined towards style than safety."
 	icon_state = "beret_purple"
+
 /obj/item/clothing/head/beret/centcom/officer
-	name = "officers beret"
-	desc = "A black beret adorned with the shield - a silver kite shield with an engraved sword - of the corporate security forces."
-	icon_state = "beret_centcom_officer"
+	name = "asset protection beret"
+	desc = "A navy blue beret adorned with the crest of corporate asset protection. For asset protection agents that are more inclined towards style than safety."
+	icon_state = "beret_corporate_navy"
+
 /obj/item/clothing/head/beret/centcom/captain
-	name = "captains beret"
-	desc = "A white beret adorned with the shield - a silver kite shield with an engraved sword - of the corporate security forces."
-	icon_state = "beret_centcom_captain"
+	name = "asset protection command beret"
+	desc = "A white beret adorned with the crest of corporate asset protection. For asset protection leaders that are more inclined towards style than safety."
+	icon_state = "beret_corporate_white"
 
-//Medical
-/obj/item/clothing/head/surgery
-	name = "surgical cap"
-	desc = "A cap surgeons wear during operations. Keeps their hair from tickling your internal organs."
-	icon_state = "surgcap_blue"
-	flags_inv = BLOCKHEADHAIR
+/obj/item/clothing/head/beret/deathsquad
+	name = "heavy asset protection beret"
+	desc = "An armored red beret adorned with the crest of corporate asset protection. Doesn't sacrifice style or safety."
+	icon_state = "beret_red"
+	armor = list(
+		melee = ARMOR_MELEE_VERY_HIGH, 
+		bullet = ARMOR_BALLISTIC_RIFLE, 
+		laser = ARMOR_LASER_HANDGUNS,
+		energy = ARMOR_ENERGY_SMALL, 
+		bomb = ARMOR_BOMB_PADDED, 
+		bio = ARMOR_BIO_RESISTANT, 
+		rad = ARMOR_RAD_MINOR
+	)
+	siemens_coefficient = 0.9
 
-/obj/item/clothing/head/surgery/purple
-	desc = "A cap surgeons wear during operations. Keeps their hair from tickling your internal organs. This one is deep purple."
-	icon_state = "surgcap_purple"
+/obj/item/clothing/head/beret/guard
+	name = "corporate security beret"
+	desc = "A white beret adorned with a corporate logo. For security guards that are more inclined towards style than safety."
+	icon_state = "corpsec_beret"
 
-/obj/item/clothing/head/surgery/blue
-	desc = "A cap surgeons wear during operations. Keeps their hair from tickling your internal organs. This one is baby blue."
-	icon_state = "surgcap_blue"
-
-/obj/item/clothing/head/surgery/green
-	desc = "A cap surgeons wear during operations. Keeps their hair from tickling your internal organs. This one is dark green."
-	icon_state = "surgcap_green"
+/obj/item/clothing/head/beret/plaincolor
+	name = "beret"
+	desc = "A simple, solid color beret. This one has no emblems or insignia on it."
+	icon_state = "beret_white"

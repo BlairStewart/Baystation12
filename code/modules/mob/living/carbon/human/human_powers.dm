@@ -1,164 +1,41 @@
-// These should all be procs, you can add them to humans/subspecies by
-// species.dm's inherent_verbs ~ Z
+/****************
+ true human verbs
+****************/
+/mob/living/carbon/human/proc/tie_hair()
+	set name = "Tie Hair"
+	set desc = "Style your hair."
+	set category = "IC"
 
-/mob/living/carbon/human/proc/tackle()
-	set category = "Abilities"
-	set name = "Tackle"
-	set desc = "Tackle someone down."
-
-	if(last_special > world.time)
+	if(incapacitated())
+		to_chat(src, "<span class='warning'>You can't mess with your hair right now!</span>")
 		return
 
-	if(stat || paralysis || stunned || weakened || lying || restrained() || buckled)
-		src << "You cannot tackle someone in your current state."
-		return
-
-	var/list/choices = list()
-	for(var/mob/living/M in view(1,src))
-		if(!istype(M,/mob/living/silicon) && Adjacent(M))
-			choices += M
-	choices -= src
-
-	var/mob/living/T = input(src,"Who do you wish to tackle?") as null|anything in choices
-
-	if(!T || !src || src.stat) return
-
-	if(!Adjacent(T)) return
-
-	if(last_special > world.time)
-		return
-
-	if(stat || paralysis || stunned || weakened || lying || restrained() || buckled)
-		src << "You cannot tackle in your current state."
-		return
-
-	last_special = world.time + 50
-
-	var/failed
-	if(prob(75))
-		T.Weaken(rand(0.5,3))
-	else
-		src.Weaken(rand(2,4))
-		failed = 1
-
-	playsound(loc, 'sound/weapons/pierce.ogg', 25, 1, -1)
-	if(failed)
-		src.Weaken(rand(2,4))
-
-	for(var/mob/O in viewers(src, null))
-		if ((O.client && !( O.blinded )))
-			O.show_message(text("\red <B>[] [failed ? "tried to tackle" : "has tackled"] down []!</B>", src, T), 1)
-
-/mob/living/carbon/human/proc/leap()
-	set category = "Abilities"
-	set name = "Leap"
-	set desc = "Leap at a target and grab them aggressively."
-
-	if(last_special > world.time)
-		return
-
-	if(stat || paralysis || stunned || weakened || lying || restrained() || buckled)
-		src << "You cannot leap in your current state."
-		return
-
-	var/list/choices = list()
-	for(var/mob/living/M in view(6,src))
-		if(!istype(M,/mob/living/silicon))
-			choices += M
-	choices -= src
-
-	var/mob/living/T = input(src,"Who do you wish to leap at?") as null|anything in choices
-
-	if(!T || !src || src.stat) return
-
-	if(get_dist(get_turf(T), get_turf(src)) > 4) return
-
-	if(last_special > world.time)
-		return
-
-	if(stat || paralysis || stunned || weakened || lying || restrained() || buckled)
-		src << "You cannot leap in your current state."
-		return
-
-	last_special = world.time + 75
-	status_flags |= LEAPING
-
-	src.visible_message("<span class='danger'>\The [src] leaps at [T]!</span>")
-	src.throw_at(get_step(get_turf(T),get_turf(src)), 4, 1, src)
-	playsound(src.loc, 'sound/voice/shriek1.ogg', 50, 1)
-
-	sleep(5)
-
-	if(status_flags & LEAPING) status_flags &= ~LEAPING
-
-	if(!src.Adjacent(T))
-		src << "<span class='warning'>You miss!</span>"
-		return
-
-	T.Weaken(3)
-
-	// Pariahs are not good at leaping. This is snowflakey, pls fix.
-	if(species.name == "Vox Pariah")
-		src.Weaken(5)
-		return
-
-	var/use_hand = "left"
-	if(l_hand)
-		if(r_hand)
-			src << "<span class='danger'>You need to have one hand free to grab someone.</span>"
+	if(head_hair_style)
+		var/datum/sprite_accessory/hair/hair_style = GLOB.hair_styles_list[head_hair_style]
+		var/selected_string
+		if(!(hair_style.flags & HAIR_TIEABLE))
+			to_chat(src, "<span class ='warning'>Your hair isn't long enough to tie.</span>")
 			return
 		else
-			use_hand = "right"
+			var/list/datum/sprite_accessory/hair/valid_hairstyles = list()
+			for(var/hair_string in GLOB.hair_styles_list)
+				var/datum/sprite_accessory/hair/test = GLOB.hair_styles_list[hair_string]
+				if(test.flags & HAIR_TIEABLE)
+					valid_hairstyles.Add(hair_string)
+			selected_string = input("Select a new hairstyle", "Your hairstyle", hair_style) as null|anything in valid_hairstyles
+		if(incapacitated())
+			to_chat(src, "<span class='warning'>You can't mess with your hair right now!</span>")
+			return
+		else if(selected_string && head_hair_style != selected_string)
+			head_hair_style = selected_string
+			regenerate_icons()
+			visible_message("<span class='notice'>[src] pauses a moment to style their hair.</span>")
+		else
+			to_chat(src, "<span class ='notice'>You're already using that style.</span>")
 
-	src.visible_message("<span class='warning'><b>\The [src]</b> seizes [T] aggressively!</span>")
-
-	var/obj/item/weapon/grab/G = new(src,T)
-	if(use_hand == "left")
-		l_hand = G
-	else
-		r_hand = G
-
-	G.state = GRAB_PASSIVE
-	G.icon_state = "grabbed1"
-	G.synch()
-
-/mob/living/carbon/human/proc/gut()
-	set category = "Abilities"
-	set name = "Gut"
-	set desc = "While grabbing someone aggressively, rip their guts out or tear them apart."
-
-	if(last_special > world.time)
-		return
-
-	if(stat || paralysis || stunned || weakened || lying)
-		src << "\red You cannot do that in your current state."
-		return
-
-	var/obj/item/weapon/grab/G = locate() in src
-	if(!G || !istype(G))
-		src << "\red You are not grabbing anyone."
-		return
-
-	if(G.state < GRAB_AGGRESSIVE)
-		src << "\red You must have an aggressive grab to gut your prey!"
-		return
-
-	last_special = world.time + 50
-
-	visible_message("<span class='warning'><b>\The [src]</b> rips viciously at \the [G.affecting]'s body with its claws!</span>")
-
-	if(istype(G.affecting,/mob/living/carbon/human))
-		var/mob/living/carbon/human/H = G.affecting
-		H.apply_damage(50,BRUTE)
-		if(H.stat == 2)
-			H.gib()
-	else
-		var/mob/living/M = G.affecting
-		if(!istype(M)) return //wut
-		M.apply_damage(50,BRUTE)
-		if(M.stat == 2)
-			M.gib()
-
+/****************
+ misc alien verbs
+****************/
 /mob/living/carbon/human/proc/commune()
 	set category = "Abilities"
 	set name = "Commune with creature"
@@ -181,32 +58,20 @@
 
 	var/mob/M = targets[target]
 
-	if(istype(M, /mob/dead/observer) || M.stat == DEAD)
-		src << "Not even a [src.species.name] can speak to the dead."
+	if(isghost(M) || M.stat == DEAD)
+		to_chat(src, "<span class='warning'>Not even a [src.species.name] can speak to the dead.</span>")
 		return
 
 	log_say("[key_name(src)] communed to [key_name(M)]: [text]")
 
-	M << "\blue Like lead slabs crashing into the ocean, alien thoughts drop into your mind: [text]"
+	to_chat(M, "<span class='notice'>Like lead slabs crashing into the ocean, alien thoughts drop into your mind: <i>[text]</i></span>")
 	if(istype(M,/mob/living/carbon/human))
 		var/mob/living/carbon/human/H = M
 		if(H.species.name == src.species.name)
 			return
-		H << "\red Your nose begins to bleed..."
-		H.drip(1)
-
-/mob/living/carbon/human/proc/regurgitate()
-	set name = "Regurgitate"
-	set desc = "Empties the contents of your stomach"
-	set category = "Abilities"
-
-	if(stomach_contents.len)
-		for(var/mob/M in src)
-			if(M in stomach_contents)
-				stomach_contents.Remove(M)
-				M.loc = loc
-		src.visible_message("\red <B>[src] hurls out the contents of their stomach!</B>")
-	return
+		if(prob(75))
+			to_chat(H, "<span class='warning'>Your nose begins to bleed...</span>")
+			H.drip(1)
 
 /mob/living/carbon/human/proc/psychic_whisper(mob/M as mob in oview())
 	set name = "Psychic Whisper"
@@ -216,44 +81,36 @@
 	var/msg = sanitize(input("Message:", "Psychic Whisper") as text|null)
 	if(msg)
 		log_say("PsychicWhisper: [key_name(src)]->[M.key] : [msg]")
-		M << "\green You hear a strange, alien voice in your head... \italic [msg]"
-		src << "\green You said: \"[msg]\" to [M]"
+		to_chat(M, "<span class='alium'>You hear a strange, alien voice in your head... <i>[msg]</i></span>")
+		to_chat(src, "<span class='alium'>You channel a message: \"[msg]\" to [M]</span>")
 	return
 
-/mob/living/carbon/human/proc/diona_split_nymph()
-	set name = "Split"
-	set desc = "Split your humanoid form into its constituent nymphs."
+/***********
+ diona verbs
+***********/
+/mob/living/carbon/human/proc/diona_heal_toggle()
+	set name = "Toggle Heal"
+	set desc = "Turn your innate healing on or off."
 	set category = "Abilities"
-	diona_split_into_nymphs(5)	// Separate proc to void argments being supplied when used as a verb
+	var/obj/aura/regenerating/human/aura = locate() in auras
+	if(!aura)
+		to_chat(src, SPAN_WARNING("You don't possess an innate healing ability."))
+		return
+	if(!aura.can_toggle())
+		to_chat(src, SPAN_WARNING("You can't toggle the healing at this time!"))
+		return
+	aura.toggle()
+	if (aura.innate_heal)
+		to_chat(src, "<span class='alium'>You are now using nutrients to regenerate.</span>")
+	else
+		to_chat(src, "<span class='alium'>You are no longer using nutrients to regenerate.</span>")
 
-/mob/living/carbon/human/proc/diona_split_into_nymphs(var/number_of_resulting_nymphs)
-	var/turf/T = get_turf(src)
-
-	var/mob/living/carbon/alien/diona/S = new(T)
-	S.set_dir(dir)
-	transfer_languages(src, S)
-	if(mind)
-		mind.transfer_to(S)
-
-	message_admins("\The [src] has split into nymphs; player now controls [key_name_admin(S)]")
-	log_admin("\The [src] has split into nymphs; player now controls [key_name(S)]")
-
-	var/nymphs = 1
-
-	for(var/mob/living/carbon/alien/diona/D in src)
-		nymphs++
-		D.forceMove(T)
-		transfer_languages(src, D, WHITELISTED|RESTRICTED)
-		D.set_dir(pick(NORTH, SOUTH, EAST, WEST))
-
-	if(nymphs < number_of_resulting_nymphs)
-		for(var/i in nymphs to (number_of_resulting_nymphs - 1))
-			var/mob/M = new /mob/living/carbon/alien/diona(T)
-			transfer_languages(src, M, WHITELISTED|RESTRICTED)
-			M.set_dir(pick(NORTH, SOUTH, EAST, WEST))
-
-	for(var/obj/item/W in src)
-		drop_from_inventory(W)
-
-	visible_message("<span class='warning'>\The [src] quivers slightly, then splits apart with a wet slithering noise.</span>")
-	qdel(src)
+/mob/living/carbon/human/proc/change_colour()
+	set category = "Abilities"
+	set name = "Change Colour"
+	set desc = "Choose the colour of your skin."
+	var/new_skin = input(usr, "Choose your new skin colour: ", "Change Colour", skin_color) as null | color
+	if (isnull(new_skin))
+		return
+	var/list/rgb = rgb2num(new_skin)
+	change_skin_color(rgb[1], rgb[2], rgb[3])

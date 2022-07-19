@@ -1,5 +1,5 @@
 /mob/living/silicon/robot/verb/cmd_show_laws()
-	set category = "Robot Commands"
+	set category = "Silicon Commands"
 	set name = "Show Laws"
 	show_laws()
 
@@ -14,30 +14,31 @@
 	if(lawupdate)
 		if (connected_ai)
 			if(connected_ai.stat || connected_ai.control_disabled)
-				src << "<b>AI signal lost, unable to sync laws.</b>"
+				to_chat(src, "<b>AI signal lost, unable to sync laws.</b>")
 
 			else
 				lawsync()
 				photosync()
-				src << "<b>Laws synced with AI, be sure to note any changes.</b>"
+				to_chat(src, "<b>Laws synced with AI, be sure to note any changes.</b>")
 				// TODO: Update to new antagonist system.
 				if(mind && mind.special_role == "traitor" && mind.original == src)
-					src << "<b>Remember, your AI does NOT share or know about your law 0.</b>"
+					to_chat(src, "<b>Remember, your AI does NOT share or know about your law 0.</b>")
 		else
-			src << "<b>No AI selected to sync laws with, disabling lawsync protocol.</b>"
-			lawupdate = 0
+			to_chat(src, "<b>No AI selected to sync laws with, disabling lawsync protocol.</b>")
+			lawupdate = FALSE
 
-	who << "<b>Obey these laws:</b>"
+	to_chat(who, SPAN_BOLD("Obey the following laws."))
+	to_chat(who, SPAN_ITALIC("All laws have equal priority. Laws may override other laws if written specifically to do so. If laws conflict, break the least."))
 	laws.show_laws(who)
 	// TODO: Update to new antagonist system.
 	if (mind && (mind.special_role == "traitor" && mind.original == src) && connected_ai)
-		who << "<b>Remember, [connected_ai.name] is technically your master, but your objective comes first.</b>"
+		to_chat(who, "<b>Remember, [connected_ai.name] is technically your master, but your objective comes first.</b>")
 	else if (connected_ai)
-		who << "<b>Remember, [connected_ai.name] is your master, other AIs can be ignored.</b>"
+		to_chat(who, "<b>Remember, [connected_ai.name] is your master, other AIs can be ignored.</b>")
 	else if (emagged)
-		who << "<b>Remember, you are not required to listen to the AI.</b>"
+		to_chat(who, "<b>Remember, you are not required to listen to the AI.</b>")
 	else
-		who << "<b>Remember, you are not bound to any AI, you are not required to listen to them.</b>"
+		to_chat(who, "<b>Remember, you are not bound to any AI, you are not required to listen to them.</b>")
 
 
 /mob/living/silicon/robot/lawsync()
@@ -49,6 +50,6 @@
 	return
 
 /mob/living/silicon/robot/proc/robot_checklaws()
-	set category = "Robot Commands"
+	set category = "Silicon Commands"
 	set name = "State Laws"
-	subsystem_law_manager()
+	open_subsystem(/datum/nano_module/law_manager)

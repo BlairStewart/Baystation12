@@ -6,13 +6,17 @@
 	set desc = "Begin or stop aiming."
 	set category = "IC"
 
-	if(isliving(src))
+	if (!gun_setting_icon)
+		to_chat(src, SPAN_WARNING("Your mobtype cannot use aiming overlays. If you feel this is in error, contact a dev."))
+		return
+
+	if(isliving(src)) //Needs to be a mob verb to prevent error messages when using hotkeys
 		var/mob/living/M = src
 		if(!M.aiming)
 			M.aiming = new(src)
 		M.aiming.toggle_active()
 	else
-		src << "<span class='warning'>This verb may only be used by living mobs, sorry.</span>"
+		to_chat(src, "<span class='warning'>This verb may only be used by living mobs, sorry.</span>")
 	return
 
 /mob/living/proc/stop_aiming(var/obj/item/thing, var/no_message = 0)
@@ -22,11 +26,12 @@
 		return
 	aiming.cancel_aiming(no_message)
 
-/mob/living/death(gibbed,deathmessage="seizes up and falls limp...")
-	if(..())
+/mob/living/death(gibbed, deathmessage="seizes up and falls limp...", show_dead_message)
+	. = ..(gibbed, deathmessage, show_dead_message)
+	if(.)
 		stop_aiming(no_message=1)
 
-/mob/living/update_canmove()
+/mob/living/UpdateLyingBuckledAndVerbStatus()
 	..()
 	if(lying)
 		stop_aiming(no_message=1)
@@ -41,4 +46,3 @@
 		aiming = null
 	aimed.Cut()
 	return ..()
-

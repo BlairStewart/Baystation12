@@ -14,7 +14,7 @@ var/global/datum/getrev/revdata = new()
 	var/list/head_log = file2list(".git/logs/HEAD", "\n")
 	for(var/line=head_log.len, line>=1, line--)
 		if(head_log[line])
-			var/list/last_entry = text2list(head_log[line], " ")
+			var/list/last_entry = splittext(head_log[line], " ")
 			if(last_entry.len < 2)	continue
 			revision = last_entry[2]
 			// Get date/time
@@ -24,21 +24,23 @@ var/global/datum/getrev/revdata = new()
 					date = unix2date(unix_time)
 			break
 
-	world.log << "Running revision:"
-	world.log << branch
-	world.log << date
-	world.log << revision
+	to_world_log("Running revision:")
+	to_world_log(branch)
+	to_world_log(date)
+	to_world_log(revision)
 
-client/verb/showrevinfo()
+/client/verb/showrevinfo()
 	set category = "OOC"
 	set name = "Show Server Revision"
 	set desc = "Check the current server code revision"
 
+	to_chat(src, "<b>Client Version:</b> [byond_version]")
 	if(revdata.revision)
-		src << "<b>Server revision:</b> [revdata.branch] - [revdata.date]"
-		if(config.githuburl)
-			src << "<a href='[config.githuburl]/commit/[revdata.revision]'>[revdata.revision]</a>"
-		else
-			src << revdata.revision
+		var/server_revision = revdata.revision
+		if(config.source_url)
+			server_revision = "<a href='[config.source_url]/commit/[server_revision]'>[server_revision]</a>"
+		to_chat(src, "<b>Server Revision:</b> [server_revision] - [revdata.branch] - [revdata.date]")
 	else
-		src << "Revision unknown"
+		to_chat(src, "<b>Server Revision:</b> Revision Unknown")
+	to_chat(src, "Game ID: <b>[game_id]</b>")
+	to_chat(src, "Current map: [GLOB.using_map.full_name]")

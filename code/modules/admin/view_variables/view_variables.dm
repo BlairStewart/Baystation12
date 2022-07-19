@@ -1,12 +1,7 @@
-
-// Variables to not even show in the list.
-// step_* and bound_* are here because they literally break the game and do nothing else.
-// parent_type is here because it's pointless to show in VV.
-/var/list/view_variables_hide_vars = list("bound_x", "bound_y", "bound_height", "bound_width", "bounds", "parent_type", "step_x", "step_y", "step_size")
 // Variables not to expand the lists of. Vars is pointless to expand, and overlays/underlays cannot be expanded.
-/var/list/view_variables_dont_expand = list("overlays", "underlays", "vars")
+var/global/list/view_variables_dont_expand = list("overlays", "underlays", "vars")
 // Variables that runtime if you try to test associativity of the lists they contain by indexing
-/var/list/view_variables_no_assoc = list("verbs", "contents")
+var/global/list/view_variables_no_assoc = list("verbs", "contents","screen","images")
 
 // Acceptable 'in world', as VV would be incredibly hampered otherwise
 /client/proc/debug_variables(datum/D in world)
@@ -19,14 +14,17 @@
 	if(!D)
 		return
 
+	var/static/cookieoffset = rand(1, 9999) //to force cookies to reset after the round.
+
 	var/icon/sprite
+	var/atom/A
 	if(istype(D, /atom))
-		var/atom/A = D
+		A = D
 		if(A.icon && A.icon_state)
 			sprite = icon(A.icon, A.icon_state)
-			usr << browse_rsc(sprite, "view_vars_sprite.png")
+			send_rsc(usr, sprite, "view_vars_sprite.png")
 
-	usr << browse_rsc('code/js/view_variables.js', "view_variables.js")
+	send_rsc(usr,'code/js/view_variables.js', "view_variables.js")
 
 	var/html = {"
 		<html>
@@ -38,7 +36,7 @@
 				.value { font-family: "Courier New", monospace; font-size: 8pt; }
 			</style>
 		</head>
-		<body onload='selectTextField(); updateSearch()'; onkeyup='updateSearch()'>
+		<body onload='selectTextField(\ref[D]); updateSearch(\ref[D])'; onkeyup='updateSearch(\ref[D])'>
 			<div align='center'>
 				<table width='100%'><tr>
 					<td width='50%'>
@@ -48,12 +46,13 @@
 						</tr></table>
 						<div align='center'>
 							<b><font size='1'>[replacetext("[D.type]", "/", "/<wbr>")]</font></b>
-							[holder.marked_datum == D ? "<br/><font size='1' color='red'><b>Marked Object</b></font>" : ""]
+							[holder.marked_datum() == D ? "<br/><font size='1' color='red'><b>Marked Object</b></font>" : ""]
 						</div>
 					</td>
 					<td width='50%'>
 						<div align='center'>
 							<a href='?_src_=vars;datumrefresh=\ref[D]'>Refresh</a>
+							[A ? "<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[A.x];Y=[A.y];Z=[A.z]'>Jump To</a>":""]
 							<form>
 								<select name='file'
 								        size='1'
@@ -97,23 +96,66 @@
 			<ol id='vars'>
 				[make_view_variables_var_list(D)]
 			</ol>
+			<script type='text/javascript'>
+				var complete_list = \[\];
+				var lis = document.getElementById("vars").children;
+				for(var i = lis.length; i--;) complete_list\[i\] = lis\[i\];
+			</script>
 		</body>
 		</html>
 		"}
 
-	usr << browse(html, "window=variables\ref[D];size=475x650")
+	show_browser(usr, html, "window=variables\ref[D];size=475x650")
 
+/client
+	var/list/watched_variables = list()
+	var/datum/browser/watched_variables/watched_variables_window
+
+/client/proc/watched_variables()
+	set category = "Debug"
+	set name = "View Watched Variables"
+
+	watched_variables_window = new(usr, "watchedvariables", "Watched Variables", 640, 640, src)
+
+	watched_variables_window.set_content()
+	watched_variables_window.open()
+
+/datum/browser/watched_variables/set_content()
+	var/list/dat = list()
+
+	if(!user || !user.client)
+		return
+
+	dat += "<style>div.var { padding: 5px; } div.var:nth-child(even) { background-color: #555; }</style>"
+	for(var/datum/D in user.client.watched_variables)
+		dat += "<h1>[make_view_variables_value(D)]</h1>"
+		for(var/v in user.client.watched_variables[D])
+			dat += "<div class='var'>"
+			dat += "(<a href='?_src_=vars;datumunwatch=\ref[D];varnameunwatch=[v]'>X</a>) "
+			dat += "[D.make_view_variables_variable_entry(v, D.get_variable_value(v), 1)] [v] = [make_view_variables_value(D.get_variable_value(v), v)]"
+			dat += "</div>"
+
+	..(jointext(dat, null))
+
+/datum/browser/watched_variables/update()
+	set_content()
+	..()
+
+/datum/browser/watched_variables/Process()
+	update()
+
+/datum/browser/watched_variables/Destroy()
+	STOP_PROCESSING(SSprocessing, src)
+
+	. = ..()
 
 /proc/make_view_variables_var_list(datum/D)
-	. = ""
-	var/list/variables = list()
-	for(var/x in D.vars)
-		if(x in view_variables_hide_vars)
-			continue
-		variables += x
+	. = list()
+	var/list/variables = D.get_variables()
 	variables = sortList(variables)
 	for(var/x in variables)
-		. += make_view_variables_var_entry(D, x, D.vars[x])
+		. += make_view_variables_var_entry(D, x, D.get_variable_value(x))
+	return jointext(., null)
 
 /proc/make_view_variables_value(value, varname = "*")
 	var/vtext = ""
@@ -150,17 +192,13 @@
 	else
 		vtext = "[value]"
 
-	return "<span class=value>[vtext]</span>[list2text(extra)]"
+	return "<span class=value>[vtext]</span>[jointext(extra, null)]"
 
 /proc/make_view_variables_var_entry(datum/D, varname, value, level=0)
 	var/ecm = null
 
 	if(D)
-		ecm = {"
-			(<a href='?_src_=vars;datumedit=\ref[D];varnameedit=[varname]'>E</a>)
-			(<a href='?_src_=vars;datumchange=\ref[D];varnamechange=[varname]'>C</a>)
-			(<a href='?_src_=vars;datummass=\ref[D];varnamemass=[varname]'>M</a>)
-			"}
+		ecm = D.make_view_variables_variable_entry(varname, value)
 
 	var/valuestr = make_view_variables_value(value, varname)
 

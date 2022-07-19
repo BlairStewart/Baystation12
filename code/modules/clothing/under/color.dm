@@ -1,66 +1,4 @@
-/obj/item/clothing/under/color/black
-	name = "black jumpsuit"
-	icon_state = "black"
-	item_state = "bl_suit"
-	worn_state = "black"
-
-/obj/item/clothing/under/color/blackf
-	name = "feminine black jumpsuit"
-	desc = "It's very smart and in a ladies-size!"
-	icon_state = "black"
-	item_state = "bl_suit"
-	worn_state = "blackf"
-
-/obj/item/clothing/under/color/blue
-	name = "blue jumpsuit"
-	icon_state = "blue"
-	item_state = "b_suit"
-	worn_state = "blue"
-
-/obj/item/clothing/under/color/green
-	name = "green jumpsuit"
-	icon_state = "green"
-	item_state = "g_suit"
-	worn_state = "green"
-
-/obj/item/clothing/under/color/grey
-	name = "grey jumpsuit"
-	icon_state = "grey"
-	item_state = "gy_suit"
-	worn_state = "grey"
-
-/obj/item/clothing/under/color/orange
-	name = "orange jumpsuit"
-	desc = "It's standardised prisoner-wear. Its suit sensors are stuck in the \"Fully On\" position."
-	icon_state = "orange"
-	item_state = "o_suit"
-	worn_state = "orange"
-	has_sensor = 2
-	sensor_mode = 3
-
-/obj/item/clothing/under/color/pink
-	name = "pink jumpsuit"
-	icon_state = "pink"
-	item_state = "p_suit"
-	worn_state = "pink"
-
-/obj/item/clothing/under/color/red
-	name = "red jumpsuit"
-	icon_state = "red"
-	item_state = "r_suit"
-	worn_state = "red"
-
-/obj/item/clothing/under/color/white
-	name = "white jumpsuit"
-	icon_state = "white"
-	item_state = "w_suit"
-	worn_state = "white"
-
-/obj/item/clothing/under/color/yellow
-	name = "yellow jumpsuit"
-	icon_state = "yellow"
-	item_state = "y_suit"
-	worn_state = "yellow"
+// items not part of the colour changing system
 
 /obj/item/clothing/under/psyche
 	name = "psychedelic jumpsuit"
@@ -69,79 +7,71 @@
 	item_state = "psyche"
 	worn_state = "psyche"
 
-/obj/item/clothing/under/lightblue
-	name = "lightblue jumpsuit"
-	desc = "lightblue"
-	icon_state = "lightblue"
-	item_state = "b_suit"
-	worn_state = "lightblue"
+/obj/item/clothing/under/color/orange
+	name = "orange jumpsuit"
+	desc = "It's standardised prisoner-wear. Its suit sensor controls are permanently set to the \"Fully On\" position."
+	icon_state = "orange"
+	item_state = "o_suit"
+	worn_state = "orange"
+	gender_icons = 1
+	has_sensor = 2
+	sensor_mode = SUIT_SENSOR_TRACKING
 
-/obj/item/clothing/under/aqua
-	name = "aqua jumpsuit"
-	desc = "aqua"
-	icon_state = "aqua"
-	item_state = "b_suit"
-	worn_state = "aqua"
+/obj/item/clothing/under/color/blackjumpshorts
+	name = "black jumpsuit shorts"
+	desc = "The latest in space fashion, in a ladies' cut with shorts."
+	icon_state = "black"
+	item_state = "bl_suit"
+	worn_state = "blackshortsf"
 
-/obj/item/clothing/under/purple
-	name = "purple jumpsuit"
-	desc = "purple"
-	icon_state = "purple"
-	item_state = "p_suit"
-	worn_state = "purple"
+// coloured jumpsuits, male pattern
 
-/obj/item/clothing/under/lightpurple
-	name = "lightpurple jumpsuit"
-	desc = "lightpurple"
-	icon_state = "lightpurple"
-	item_state = "p_suit"
-	worn_state = "lightpurple"
+/obj/item/clothing/under/color
+	name = "jumpsuit"
+	desc = "The latest in space fashion."
+	icon_state = "jumpsuit"
+	item_state = "jumpsuit"
+	worn_state = "jumpsuit"
+	gender_icons = 1
 
-/obj/item/clothing/under/lightgreen
-	name = "lightgreen jumpsuit"
-	desc = "lightgreen"
-	icon_state = "lightgreen"
-	item_state = "g_suit"
-	worn_state = "lightgreen"
+// legacy colours - these are used somewhere in the game, but aren't available in the loadout
 
-/obj/item/clothing/under/lightbrown
-	name = "lightbrown jumpsuit"
-	desc = "lightbrown"
-	icon_state = "lightbrown"
-	item_state = "lb_suit"
-	worn_state = "lightbrown"
+/obj/item/clothing/under/color/white
+	name = "white jumpsuit"
+	color = "#ffffff"
 
-/obj/item/clothing/under/brown
+/obj/item/clothing/under/color/black
+	name = "black jumpsuit"
+	color = "#3d3d3d"
+
+/obj/item/clothing/under/color/grey
+	name = "grey jumpsuit"
+	color = "#c4c4c4"
+
+/obj/item/clothing/under/color/blue
+	name = "blue jumpsuit"
+	color = "#0066ff"
+
+/obj/item/clothing/under/color/pink
+	name = "pink jumpsuit"
+	color = "#df20a6"
+
+/obj/item/clothing/under/color/red
+	name = "red jumpsuit"
+	color = "#ee1511"
+
+/obj/item/clothing/under/color/green
+	name = "green jumpsuit"
+	color = "#42a345"
+
+/obj/item/clothing/under/color/yellow
+	name = "yellow jumpsuit"
+	color = "#ffee00"
+
+/obj/item/clothing/under/color/lightpurple
+	name = "light purple jumpsuit"
+	color = "#c600fc"
+
+/obj/item/clothing/under/color/brown
 	name = "brown jumpsuit"
-	desc = "brown"
-	icon_state = "brown"
-	item_state = "lb_suit"
-	worn_state = "brown"
-
-/obj/item/clothing/under/yellowgreen
-	name = "yellowgreen jumpsuit"
-	desc = "yellowgreen"
-	icon_state = "yellowgreen"
-	item_state = "y_suit"
-	worn_state = "yellowgreen"
-
-/obj/item/clothing/under/darkblue
-	name = "darkblue jumpsuit"
-	desc = "darkblue"
-	icon_state = "darkblue"
-	item_state = "b_suit"
-	worn_state = "darkblue"
-
-/obj/item/clothing/under/lightred
-	name = "lightred jumpsuit"
-	desc = "lightred"
-	icon_state = "lightred"
-	item_state = "r_suit"
-	worn_state = "lightred"
-
-/obj/item/clothing/under/darkred
-	name = "darkred jumpsuit"
-	desc = "darkred"
-	icon_state = "darkred"
-	item_state = "r_suit"
-	worn_state = "darkred"
+	color = "#c08720"

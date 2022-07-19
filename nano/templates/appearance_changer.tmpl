@@ -17,8 +17,9 @@
             Gender:
         </div>
         <div class="itemContentWide">
-            {{:helper.link('Male', null, { 'gender' : 'male'}, null, data.gender == 'male' ? 'selected' : null)}}
-            {{:helper.link('Female', null, { 'gender' : 'female'}, null, data.gender == 'female' ? 'selected' : null)}}
+            {{for data.genders}}
+                {{:helper.link(value.gender_name, null, { 'gender' : value.gender_key}, null, data.gender == value.gender_key ? 'selected' : null)}}
+            {{/for}}
         </div>
     </div>
 {{/if}}
@@ -69,6 +70,18 @@
         <div class="itemContentWide">
             {{for data.facial_hair_styles}}
                 {{:helper.link(value.facialhairstyle, null, { 'facial_hair' : value.facialhairstyle}, null, data.facial_hair_style == value.facialhairstyle ? 'selected' : null)}}
+            {{/for}}
+        </div>
+    </div>
+{{/if}}
+{{if data.change_languages}}
+    <div class="item">
+        <div class="itemLabelNarrow">
+            Languages:
+        </div>
+        <div class="itemContentWide">
+            {{for data.languages}}
+                {{:helper.link(value.language, null, {'language': value.language, 'language_mode': value.selected ? 'rem': 'add'}, null, value.selected ? 'selected' : null )}}
             {{/for}}
         </div>
     </div>

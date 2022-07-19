@@ -63,9 +63,18 @@
 /datum/universal_state/proc/OverlayAndAmbientSet()
 	return
 
-/proc/SetUniversalState(var/newstate,var/on_exit=1, var/on_enter=1)
+/datum/universal_state/proc/OnPlayerLatejoin(var/mob/living/M)
+	return
+
+/datum/universal_state/proc/OnTouchMapEdge(var/atom/A)
+	return TRUE //return FALSE to cancel map edge handling
+
+/proc/SetUniversalState(var/newstate,var/on_exit=1, var/on_enter=1, list/arguments=null)
 	if(on_exit)
-		universe.OnExit()
-	universe = new newstate
+		GLOB.universe.OnExit()
+	if(arguments)
+		GLOB.universe = new newstate(arglist(arguments))
+	else
+		GLOB.universe = new newstate
 	if(on_enter)
-		universe.OnEnter()
+		GLOB.universe.OnEnter()

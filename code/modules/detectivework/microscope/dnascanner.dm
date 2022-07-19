@@ -4,10 +4,10 @@
 	desc = "A high tech machine that is designed to read DNA samples properly."
 	icon = 'icons/obj/forensics.dmi'
 	icon_state = "dnaopen"
-	anchored = 1
-	density = 1
+	anchored = TRUE
+	density = TRUE
 
-	var/obj/item/weapon/forensics/swab/bloodsamp = null
+	var/obj/item/forensics/swab/bloodsamp = null
 	var/closed = 0
 	var/scanning = 0
 	var/scanner_progress = 0
@@ -18,21 +18,21 @@
 /obj/machinery/dnaforensics/attackby(var/obj/item/W, mob/user as mob)
 
 	if(bloodsamp)
-		user << "<span class='warning'>There is already a sample in the machine.</span>"
+		to_chat(user, "<span class='warning'>There is already a sample in the machine.</span>")
 		return
 
 	if(closed)
-		user << "<span class='warning'>Open the cover before inserting the sample.</span>"
+		to_chat(user, "<span class='warning'>Open the cover before inserting the sample.</span>")
 		return
 
-	var/obj/item/weapon/forensics/swab/swab = W
+	var/obj/item/forensics/swab/swab = W
 	if(istype(swab) && swab.is_used())
-		user.unEquip(W)
+		if(!user.unEquip(W, src))
+			return
 		src.bloodsamp = swab
-		swab.loc = src
-		user << "<span class='notice'>You insert \the [W] into \the [src].</span>"
+		to_chat(user, "<span class='notice'>You insert \the [W] into \the [src].</span>")
 	else
-		user << "<span class='warning'>\The [src] only accepts used swabs.</span>"
+		to_chat(user, "<span class='warning'>\The [src] only accepts used swabs.</span>")
 		return
 
 /obj/machinery/dnaforensics/ui_interact(mob/user, ui_key = "main",var/datum/nanoui/ui = null)
@@ -45,7 +45,7 @@
 	data["bloodsamp_desc"] = (bloodsamp ? (bloodsamp.desc ? bloodsamp.desc : "No information on record.") : "")
 	data["lidstate"] = closed
 
-	ui = nanomanager.try_update_ui(user, src, ui_key, ui, data)
+	ui = SSnano.try_update_ui(user, src, ui_key, ui, data)
 	if (!ui)
 		ui = new(user, src, ui_key, "dnaforensics.tmpl", "QuikScan DNA Analyzer", 540, 326)
 		ui.set_initial_data(data)
@@ -67,12 +67,12 @@
 				if(closed == 1)
 					scanner_progress = 0
 					scanning = 1
-					usr << "<span class='notice'>Scan initiated.</span>"
+					to_chat(usr, "<span class='notice'>Scan initiated.</span>")
 					update_icon()
 				else
-					usr << "<span class='notice'>Please close sample lid before initiating scan.</span>"
+					to_chat(usr, "<span class='notice'>Please close sample lid before initiating scan.</span>")
 			else
-				usr << "<span class='warning'>Insert an item to scan.</span>"
+				to_chat(usr, "<span class='warning'>Insert an item to scan.</span>")
 
 	if(href_list["ejectItem"])
 		if(bloodsamp)
@@ -84,7 +84,7 @@
 
 	return 1
 
-/obj/machinery/dnaforensics/process()
+/obj/machinery/dnaforensics/Process()
 	if(scanning)
 		if(!bloodsamp || bloodsamp.loc != src)
 			bloodsamp = null
@@ -99,19 +99,21 @@
 	last_process_worldtime = world.time
 
 /obj/machinery/dnaforensics/proc/complete_scan()
-	src.visible_message("<span class='notice'>\icon[src] makes an insistent chime.</span>", 2)
+	src.visible_message("<span class='notice'>[icon2html(src, viewers(get_turf(src)))] makes an insistent chime.</span>", 2)
 	update_icon()
 	if(bloodsamp)
-		var/obj/item/weapon/paper/P = new(src)
-		P.name = "[src] report #[++report_num]: [bloodsamp.name]"
-		P.stamped = list(/obj/item/weapon/stamp)
+		var/obj/item/paper/P = new(src)
+		P.SetName("[src] report #[++report_num]: [bloodsamp.name]")
+		P.stamped = list(/obj/item/stamp)
 		P.overlays = list("paper_stamped")
 		//dna data itself
 		var/data = "No scan information available."
-		if(bloodsamp.dna != null)
-			data = "Spectometric analysis on provided sample has determined the presence of [bloodsamp.dna.len] strings of DNA.<br><br>"
+		if(bloodsamp.dna != null || bloodsamp.trace_dna != null)
+			data = "Spectometric analysis on provided sample has determined the presence of DNA.<br><br>"
 			for(var/blood in bloodsamp.dna)
-				data += "\blue Blood type: [bloodsamp.dna[blood]]<br>\nDNA: [blood]<br><br>"
+				data += "<span class='notice'>Blood type: [bloodsamp.dna[blood]]<br>DNA: [blood]</span><br><br>"
+			for(var/trace in bloodsamp.trace_dna)
+				data += "<span class='notice'>Trace DNA: [trace]</span><br><br>"
 		else
 			data += "No DNA found.<br>"
 		P.info = "<b>[src] analysis report #[report_num]</b><br>"
@@ -122,11 +124,9 @@
 		update_icon()
 	return
 
-/obj/machinery/dnaforensics/attack_ai(mob/user as mob)
+/obj/machinery/dnaforensics/interface_interact(mob/user)
 	ui_interact(user)
-
-/obj/machinery/dnaforensics/attack_hand(mob/user as mob)
-	ui_interact(user)
+	return TRUE
 
 /obj/machinery/dnaforensics/verb/toggle_lid()
 	set category = "Object"
@@ -137,13 +137,13 @@
 		return
 
 	if(scanning)
-		usr << "<span class='warning'>You can't do that while [src] is scanning!</span>"
+		to_chat(usr, "<span class='warning'>You can't do that while [src] is scanning!</span>")
 		return
 
 	closed = !closed
 	src.update_icon()
 
-/obj/machinery/dnaforensics/update_icon()
+/obj/machinery/dnaforensics/on_update_icon()
 	..()
 	if(!(stat & NOPOWER) && scanning)
 		icon_state = "dnaworking"

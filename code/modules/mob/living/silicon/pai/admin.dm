@@ -7,7 +7,7 @@
 		return
 
 	if(!pai_key)
-		var/client/C = input("Select client") as null|anything in clients
+		var/client/C = input("Select client") as null|anything in GLOB.clients
 		if(!C) return
 		pai_key = C.key
 
@@ -18,4 +18,4 @@
 	card.setPersonality(pai)
 
 	if(name)
-		pai.SetName(name)
+		pai.fully_replace_character_name(name)

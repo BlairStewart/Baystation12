@@ -5,87 +5,71 @@
 	var/effect // description of what happens when not treated
 	var/duration = 0 // delay between start() and finish()
 
-	proc/start(mob/living/carbon/human/H)
-		// start the side effect, this should give some cue as to what's happening,
-		// such as gasping. These cues need to be unique among side-effects.
+/datum/genetics/side_effect/proc/start(mob/living/carbon/human/H)
+	// start the side effect, this should give some cue as to what's happening,
+	// such as gasping. These cues need to be unique among side-effects.
 
-	proc/finish(mob/living/carbon/human/H)
-		// Finish the side-effect. This should first check whether the cure has been
-		// applied, and if not, cause bad things to happen.
+/datum/genetics/side_effect/proc/finish(mob/living/carbon/human/H)
+	// Finish the side-effect. This should first check whether the cure has been
+	// applied, and if not, cause bad things to happen.
+
+/datum/genetics/side_effect/proc/trigger_side_effect(mob/living/carbon/human/H)
+	if(ishuman(H))
+		addtimer(CALLBACK(src, .proc/do_side_effect, H), 0)
+
+/datum/genetics/side_effect/proc/do_side_effect(mob/living/carbon/human/H)
+	var/tp = pick(typesof(/datum/genetics/side_effect) - /datum/genetics/side_effect)
+	var/datum/genetics/side_effect/S = new tp
+
+	S.start(H)
+	addtimer(CALLBACK(H, /mob/proc/Weaken, rand(0, S.duration / 50)), 20)
+	sleep(S.duration)
+	H.SetWeakened(0)
+	S.finish(H)
+
 
 /datum/genetics/side_effect/genetic_burn
 	name = "Genetic Burn"
 	symptom = "Subject's skin turns unusualy red."
 	treatment = "Inject small dose of dexalin."
 	effect = "Subject's skin burns."
-	duration = 10*30
+	duration = 30 SECONDS
 
-	start(mob/living/carbon/human/H)
-		H.emote("me", 1, "starts turning very red..")
+/datum/genetics/side_effect/genetic_burn/start(mob/living/carbon/human/H)
+	H.visible_message("<B>\The [H]</B> starts turning very red...")
 
-	finish(mob/living/carbon/human/H)
-		if(!H.reagents.has_reagent("dexalin"))
-			for(var/organ_name in list("chest","l_arm","r_arm","r_leg","l_leg","head","groin"))
-				var/obj/item/organ/external/E = H.get_organ(organ_name)
-				E.take_damage(0, 5, 0)
+/datum/genetics/side_effect/genetic_burn/finish(mob/living/carbon/human/H)
+	if(!H.reagents.has_reagent(/datum/reagent/dexalin))
+		for(var/organ_name in BP_ALL_LIMBS)
+			var/obj/item/organ/external/E = H.get_organ(organ_name)
+			E.take_external_damage(0, 5, 0)
 
 /datum/genetics/side_effect/bone_snap
 	name = "Bone Snap"
 	symptom = "Subject's limbs tremble notably."
 	treatment = "Inject small dose of bicaridine."
 	effect = "Subject's bone breaks."
-	duration = 10*60
+	duration = 1 MINUTE
 
-	start(mob/living/carbon/human/H)
-		H.emote("me", 1, "'s limbs start shivering uncontrollably.")
-
-	finish(mob/living/carbon/human/H)
-		if(!H.reagents.has_reagent("bicaridine"))
-			var/organ_name = pick("chest","l_arm","r_arm","r_leg","l_leg","head","groin")
-			var/obj/item/organ/external/E = H.get_organ(organ_name)
-			E.take_damage(20, 0, 0)
-			E.fracture()
-
-/*/datum/genetics/side_effect/monkey
-	name = "Monkey"
-	symptom = "Subject starts drooling uncontrollably."
-	treatment = "Inject small dose of dylovene."
-	effect = "Subject turns into monkey."
-	duration = 10*90
-
-	start(mob/living/carbon/human/H)
-		H.emote("me", 1, "has drool running down from [H.gender == MALE ? "his" : H.gender == FEMALE ? "her" : "their"] mouth.")
-
-	finish(mob/living/carbon/human/H)
-		if(!H.reagents.has_reagent("anti_toxin"))
-			H.monkeyize()**/
+/datum/genetics/side_effect/bone_snap/start(mob/living/carbon/human/H)
+	H.visible_message("<B>\The [H]</B>'s limbs start shivering uncontrollably.")
+/datum/genetics/side_effect/bone_snap/finish(mob/living/carbon/human/H)
+	if(!H.reagents.has_reagent(/datum/reagent/bicaridine))
+		var/organ_name = pick(BP_ALL_LIMBS)
+		var/obj/item/organ/external/E = H.get_organ(organ_name)
+		E.take_external_damage(20, 0, 0)
+		E.fracture()
 
 /datum/genetics/side_effect/confuse
 	name = "Confuse"
 	symptom = "Subject starts drooling uncontrollably."
 	treatment = "Inject small dose of dylovene."
 	effect = "Subject becomes confused."
-	duration = 10*30
+	duration = 30 SECONDS
 
-	start(mob/living/carbon/human/H)
-		H.emote("me", 1, "has drool running down from [H.gender == MALE ? "his" : H.gender == FEMALE ? "her" : "their"] mouth.")
+/datum/genetics/side_effect/confuse/start(mob/living/carbon/human/H)
+	H.visible_message("<B>\The [H]</B> drools.")
 
-	finish(mob/living/carbon/human/H)
-		if(!H.reagents.has_reagent("anti_toxin"))
-			H.confused += 100
-
-proc/trigger_side_effect(mob/living/carbon/human/H)
-	spawn
-		if(!istype(H)) return
-		var/tp = pick(typesof(/datum/genetics/side_effect) - /datum/genetics/side_effect)
-		var/datum/genetics/side_effect/S = new tp
-
-		S.start(H)
-		spawn(20)
-			if(!istype(H)) return
-			H.Weaken(rand(0, S.duration / 50))
-		sleep(S.duration)
-
-		if(!istype(H)) return
-		H.SetWeakened(0)
-		S.finish(H)
+/datum/genetics/side_effect/confuse/finish(mob/living/carbon/human/H)
+	if(!H.reagents.has_reagent(/datum/reagent/dylovene))
+		H.confused += 100

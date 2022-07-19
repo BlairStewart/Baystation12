@@ -5,11 +5,22 @@
 	item_state = "bl_suit"
 	worn_state = "syndicate"
 	has_sensor = 0
-	armor = list(melee = 10, bullet = 0, laser = 0,energy = 0, bomb = 0, bio = 0, rad = 0)
+	gender_icons = 1
+	armor = list(
+		melee = ARMOR_MELEE_SMALL, 
+		bullet = ARMOR_BALLISTIC_MINOR, 
+		laser = ARMOR_LASER_MINOR
+		)
 	siemens_coefficient = 0.9
 
 /obj/item/clothing/under/syndicate/combat
 	name = "combat turtleneck"
+	desc = "The height of fashion and tactical utility."
+	icon_state = "combat"
+	item_state = "bl_suit"
+	worn_state = "combat"
+	gender_icons = 1
+	has_sensor = SUIT_HAS_SENSORS
 
 /obj/item/clothing/under/syndicate/tacticool
 	name = "\improper Tacticool turtleneck"
@@ -17,6 +28,8 @@
 	icon_state = "tactifool"
 	item_state = "bl_suit"
 	worn_state = "tactifool"
+	armor = null
 	siemens_coefficient = 1
+	has_sensor = SUIT_HAS_SENSORS
 
 

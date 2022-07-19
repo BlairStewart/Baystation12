@@ -4,37 +4,37 @@
 /obj/structure/closet/walllocker
 	desc = "A wall mounted storage locker."
 	name = "Wall Locker"
-	icon = 'icons/obj/walllocker.dmi'
-	icon_state = "wall-locker"
-	density = 0
-	anchored = 1
-	icon_closed = "wall-locker"
-	icon_opened = "wall-lockeropen"
+	closet_appearance = /decl/closet_appearance/wall
+	density = FALSE
+	anchored = TRUE
+	wall_mounted = TRUE
+	storage_types = CLOSET_STORAGE_ITEMS
+	setup = 0
 
 //spawns endless (3 sets) amounts of breathmask, emergency oxy tank and crowbar
 
 /obj/structure/closet/walllocker/emerglocker
 	name = "emergency locker"
 	desc = "A wall mounted locker with emergency supplies."
-	var/list/spawnitems = list(/obj/item/weapon/tank/emergency_oxygen,/obj/item/clothing/mask/breath)
+	var/list/spawnitems = list(/obj/item/tank/oxygen_emergency,/obj/item/clothing/mask/breath)
 	var/amount = 2 // spawns each items X times.
-	icon_state = "emerg"
+	closet_appearance = /decl/closet_appearance/wall/emergency
 
 /obj/structure/closet/walllocker/emerglocker/toggle(mob/user as mob)
 	src.attack_hand(user)
 	return
 
-/obj/structure/closet/walllocker/emerglocker/attackby(obj/item/weapon/W as obj, mob/user as mob)
+/obj/structure/closet/walllocker/emerglocker/attackby(obj/item/W as obj, mob/user as mob)
 	return
 
 /obj/structure/closet/walllocker/emerglocker/attack_hand(mob/user as mob)
 	if (istype(user, /mob/living/silicon/ai))	//Added by Strumpetplaya - AI shouldn't be able to
 		return									//activate emergency lockers.  This fixes that.  (Does this make sense, the AI can't call attack_hand, can it? --Mloc)
 	if(!amount)
-		usr << "<spawn class='notice'>It's empty.."
+		to_chat(usr, "<spawn class='notice'>It's empty..")
 		return
 	if(amount)
-		usr << "<spawn class='notice'>You take out some items from \the [src]."
+		to_chat(usr, "<spawn class='notice'>You take out some items from \the [src].")
 		for(var/path in spawnitems)
 			new path(src.loc)
 		amount--

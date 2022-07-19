@@ -1,26 +1,55 @@
 /obj/machinery/meter
 	name = "meter"
-	desc = "It measures something."
+	desc = "A gas flow meter."
 	icon = 'icons/obj/meter.dmi'
 	icon_state = "meterX"
-	var/obj/machinery/atmospherics/pipe/target = null
-	anchored = 1.0
+	var/atom/target = null //A pipe for the base type
+	anchored = TRUE
 	power_channel = ENVIRON
-	var/frequency = 0
-	var/id
-	use_power = 1
 	idle_power_usage = 15
 
-/obj/machinery/meter/New()
+	uncreated_component_parts = list(
+		/obj/item/stock_parts/power/apc
+	)
+	public_variables = list(
+		/decl/public_access/public_variable/gas,
+		/decl/public_access/public_variable/pressure,
+		/decl/public_access/public_variable/temperature
+	)
+	stock_part_presets = list(/decl/stock_part_preset/radio/basic_transmitter/meter = 1)
+
+	frame_type = /obj/item/machine_chassis/pipe_meter
+	construct_state = /decl/machine_construction/default/item_chassis
+	base_type = /obj/machinery/meter
+
+/obj/machinery/meter/Initialize()
+	. = ..()
+	if(!target)
+		set_target(locate(/obj/machinery/atmospherics/pipe) in loc)
+	if(!target)
+		set_target(loc)
+
+/obj/machinery/meter/proc/set_target(atom/new_target)
+	clear_target()
+	target = new_target
+	GLOB.destroyed_event.register(target, src, .proc/clear_target)
+
+/obj/machinery/meter/proc/clear_target()
+	if(target)
+		GLOB.destroyed_event.unregister(target, src)
+		target = null
+
+/obj/machinery/meter/return_air()
+	if(target)
+		return target.return_air()
+	return ..()
+
+/obj/machinery/meter/Destroy()
+	clear_target()
+	. = ..()
+
+/obj/machinery/meter/Process()
 	..()
-	src.target = locate(/obj/machinery/atmospherics/pipe) in loc
-	return 1
-
-/obj/machinery/meter/initialize()
-	if (!target)
-		src.target = locate(/obj/machinery/atmospherics/pipe) in loc
-
-/obj/machinery/meter/process()
 	if(!target)
 		icon_state = "meterX"
 		return 0
@@ -29,7 +58,7 @@
 		icon_state = "meter0"
 		return 0
 
-	var/datum/gas_mixture/environment = target.return_air()
+	var/datum/gas_mixture/environment = return_air()
 	if(!environment)
 		icon_state = "meterX"
 		return 0
@@ -49,74 +78,50 @@
 	else
 		icon_state = "meter4"
 
-	if(frequency)
-		var/datum/radio_frequency/radio_connection = radio_controller.return_frequency(frequency)
 
-		if(!radio_connection) return
+/obj/machinery/meter/examine(mob/user, distance)
+	. = ..()
 
-		var/datum/signal/signal = new
-		signal.source = src
-		signal.transmission_method = 1
-		signal.data = list(
-			"tag" = id,
-			"device" = "AM",
-			"pressure" = round(env_pressure),
-			"sigtype" = "status"
-		)
-		radio_connection.post_signal(src, signal)
+	if(distance > 3 && !(istype(user, /mob/living/silicon/ai) || isghost(user)))
+		to_chat(user, "<span class='warning'>You are too far away to read it.</span>")
 
-/obj/machinery/meter/examine(mob/user)
-	var/t = "A gas flow meter. "
-	
-	if(get_dist(user, src) > 3 && !(istype(user, /mob/living/silicon/ai) || istype(user, /mob/dead)))
-		t += "<span class='warning'>You are too far away to read it.</span>"
-	
 	else if(stat & (NOPOWER|BROKEN))
-		t += "<span class='warning'>The display is off.</span>"
-	
+		to_chat(user, "<span class='warning'>The display is off.</span>")
+
 	else if(src.target)
 		var/datum/gas_mixture/environment = target.return_air()
 		if(environment)
-			t += "The pressure gauge reads [round(environment.return_pressure(), 0.01)] kPa; [round(environment.temperature,0.01)]K ([round(environment.temperature-T0C,0.01)]&deg;C)"
+			to_chat(user, "The pressure gauge reads [round(environment.return_pressure(), 0.01)] kPa; [round(environment.temperature,0.01)]K ([round(environment.temperature-T0C,0.01)]&deg;C)")
 		else
-			t += "The sensor error light is blinking."
+			to_chat(user, "The sensor error light is blinking.")
 	else
-		t += "The connect error light is blinking."
-	
-	user << t
-
-/obj/machinery/meter/Click()
-
-	if(istype(usr, /mob/living/silicon/ai)) // ghosts can call ..() for examine
-		usr.examinate(src)
-		return 1
-	
-	return ..()
-
-/obj/machinery/meter/attackby(var/obj/item/weapon/W as obj, var/mob/user as mob)
-	if (!istype(W, /obj/item/weapon/wrench))
-		return ..()
-	playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)
-	user << "<span class='notice'>You begin to unfasten \the [src]...</span>"
-	if (do_after(user, 40))
-		user.visible_message( \
-			"<span class='notice'>\The [user] unfastens \the [src].</span>", \
-			"<span class='notice'>You have unfastened \the [src].</span>", \
-			"You hear ratchet.")
-		new /obj/item/pipe_meter(src.loc)
-		qdel(src)
-
-// TURF METER - REPORTS A TILE'S AIR CONTENTS
-
-/obj/machinery/meter/turf/New()
-	..()
-	src.target = loc
-	return 1
+		to_chat(user, "The connect error light is blinking.")
 
 
-/obj/machinery/meter/turf/initialize()
+/obj/machinery/meter/interface_interact(mob/user)
 	if (!target)
-		src.target = loc
+		log_debug(append_admin_tools("\A [src] interacted with by \the [user] had no target.", user, get_turf(src)))
+		to_chat(user, SPAN_WARNING("\The [src] has no target! This might be a bug. Please report it."))
+		return TRUE
+	var/datum/gas_mixture/environment = target.return_air()
+	to_chat(user, "The pressure gauge reads [round(environment.return_pressure(), 0.01)] kPa; [round(environment.temperature,0.01)]K ([round(environment.temperature-T0C,0.01)]&deg;C)")
+	return TRUE
 
-/obj/machinery/meter/turf/attackby(var/obj/item/weapon/W as obj, var/mob/user as mob)
-	return
+// turf meter -- prioritizes turfs over pipes for target acquisition
+
+/obj/machinery/meter/turf/Initialize()
+	if (!target)
+		set_target(loc)
+	. = ..()
+
+/obj/machinery/meter/starts_with_radio
+	uncreated_component_parts = list(
+		/obj/item/stock_parts/radio/transmitter/basic/buildable,
+		/obj/item/stock_parts/power/apc/buildable
+	)
+
+/decl/stock_part_preset/radio/basic_transmitter/meter
+	transmit_on_tick = list(
+		"pressure" = /decl/public_access/public_variable/pressure,
+	)
+	frequency = ATMOS_TANK_FREQ

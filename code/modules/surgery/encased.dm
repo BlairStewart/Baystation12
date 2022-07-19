@@ -2,219 +2,47 @@
 //////////////////////////////////////////////////////////////////
 //				GENERIC	RIBCAGE SURGERY							//
 //////////////////////////////////////////////////////////////////
-/datum/surgery_step/open_encased
-	priority = 2
+
+//////////////////////////////////////////////////////////////////
+//	generic ribcage surgery step datum
+//////////////////////////////////////////////////////////////////
+/decl/surgery_step/open_encased
+	name = "Saw through bone"
+	allowed_tools = list(
+		/obj/item/circular_saw = 100,
+		/obj/item/material/knife = 50,
+		/obj/item/material/hatchet = 75
+	)
 	can_infect = 1
 	blood_level = 1
-	can_use(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return 0
-
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-		return affected && !(affected.status & ORGAN_ROBOT) && affected.encased && affected.open >= 2
-
-
-/datum/surgery_step/open_encased/saw
-	allowed_tools = list(
-	/obj/item/weapon/circular_saw = 100, \
-	/obj/item/weapon/material/hatchet = 75
-	)
-
 	min_duration = 50
 	max_duration = 70
+	shock_level = 60
+	delicate = 1
+	surgery_candidate_flags = SURGERY_NO_ROBOTIC | SURGERY_NO_CRYSTAL | SURGERY_NO_STUMP | SURGERY_NEEDS_RETRACTED
+	strict_access_requirement = TRUE
 
-	can_use(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-		return ..() && affected && affected.open == 2
+/decl/surgery_step/open_encased/assess_bodypart(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
+	var/obj/item/organ/external/affected = ..()
+	if(affected && affected.encased)
+		return affected
 
-	begin_step(mob/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
+/decl/surgery_step/open_encased/begin_step(mob/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
+	var/obj/item/organ/external/affected = target.get_organ(target_zone)
+	user.visible_message("[user] begins to cut through [target]'s [affected.encased] with \the [tool].", \
+	"You begin to cut through [target]'s [affected.encased] with \the [tool].")
+	target.custom_pain("Something hurts horribly in your [affected.name]!",60, affecting = affected)
+	..()
 
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
+/decl/surgery_step/open_encased/end_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
+	var/obj/item/organ/external/affected = target.get_organ(target_zone)
+	user.visible_message("<span class='notice'>[user] has cut [target]'s [affected.encased] open with \the [tool].</span>",		\
+	"<span class='notice'>You have cut [target]'s [affected.encased] open with \the [tool].</span>")
+	affected.fracture()
 
-		user.visible_message("[user] begins to cut through [target]'s [affected.encased] with \the [tool].", \
-		"You begin to cut through [target]'s [affected.encased] with \the [tool].")
-		target.custom_pain("Something hurts horribly in your [affected.name]!",1)
-		..()
-
-	end_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-
-		user.visible_message("\blue [user] has cut [target]'s [affected.encased] open with \the [tool].",		\
-		"\blue You have cut [target]'s [affected.encased] open with \the [tool].")
-		affected.open = 2.5
-
-	fail_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-
-		user.visible_message("\red [user]'s hand slips, cracking [target]'s [affected.encased] with \the [tool]!" , \
-		"\red Your hand slips, cracking [target]'s [affected.encased] with \the [tool]!" )
-
-		affected.createwound(CUT, 20)
-		affected.fracture()
-
-
-/datum/surgery_step/open_encased/retract
-	allowed_tools = list(
-	/obj/item/weapon/retractor = 100, 	\
-	/obj/item/weapon/crowbar = 75
-	)
-
-	min_duration = 30
-	max_duration = 40
-
-	can_use(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-		return ..() && affected && affected.open == 2.5
-
-	begin_step(mob/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-
-		var/msg = "[user] starts to force open the [affected.encased] in [target]'s [affected.name] with \the [tool]."
-		var/self_msg = "You start to force open the [affected.encased] in [target]'s [affected.name] with \the [tool]."
-		user.visible_message(msg, self_msg)
-		target.custom_pain("Something hurts horribly in your [affected.name]!",1)
-		..()
-
-	end_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-
-		var/msg = "\blue [user] forces open [target]'s [affected.encased] with \the [tool]."
-		var/self_msg = "\blue You force open [target]'s [affected.encased] with \the [tool]."
-		user.visible_message(msg, self_msg)
-
-		affected.open = 3
-
-		// Whoops!
-		if(prob(10))
-			affected.fracture()
-
-	fail_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-
-		var/msg = "\red [user]'s hand slips, cracking [target]'s [affected.encased]!"
-		var/self_msg = "\red Your hand slips, cracking [target]'s  [affected.encased]!"
-		user.visible_message(msg, self_msg)
-
-		affected.createwound(BRUISE, 20)
-		affected.fracture()
-
-/datum/surgery_step/open_encased/close
-	allowed_tools = list(
-	/obj/item/weapon/retractor = 100, 	\
-	/obj/item/weapon/crowbar = 75
-	)
-
-	min_duration = 20
-	max_duration = 40
-
-	can_use(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-		return ..() && affected && affected.open == 3
-
-	begin_step(mob/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-
-		var/msg = "[user] starts bending [target]'s [affected.encased] back into place with \the [tool]."
-		var/self_msg = "You start bending [target]'s [affected.encased] back into place with \the [tool]."
-		user.visible_message(msg, self_msg)
-		target.custom_pain("Something hurts horribly in your [affected.name]!",1)
-		..()
-
-	end_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-
-		var/msg = "\blue [user] bends [target]'s [affected.encased] back into place with \the [tool]."
-		var/self_msg = "\blue You bend [target]'s [affected.encased] back into place with \the [tool]."
-		user.visible_message(msg, self_msg)
-
-		affected.open = 2.5
-
-	fail_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-
-		var/msg = "\red [user]'s hand slips, bending [target]'s [affected.encased] the wrong way!"
-		var/self_msg = "\red Your hand slips, bending [target]'s [affected.encased] the wrong way!"
-		user.visible_message(msg, self_msg)
-
-		affected.createwound(BRUISE, 20)
-		affected.fracture()
-		
-		if(affected.internal_organs && affected.internal_organs.len)
-			if(prob(40))
-				var/obj/item/organ/O = pick(affected.internal_organs) //TODO weight by organ size
-				user.visible_message("<span class='danger'>A wayward piece of [target]'s [affected.encased] pierces \his [O.name]!</span>")
-				O.bruise()
-
-/datum/surgery_step/open_encased/mend
-	allowed_tools = list(
-	/obj/item/weapon/bonegel = 100,	\
-	/obj/item/weapon/screwdriver = 75
-	)
-
-	min_duration = 20
-	max_duration = 40
-
-	can_use(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-		return ..() && affected && affected.open == 2.5
-
-	begin_step(mob/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-
-		var/msg = "[user] starts applying \the [tool] to [target]'s [affected.encased]."
-		var/self_msg = "You start applying \the [tool] to [target]'s [affected.encased]."
-		user.visible_message(msg, self_msg)
-		target.custom_pain("Something hurts horribly in your [affected.name]!",1)
-		..()
-
-	end_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
-
-		if (!hasorgans(target))
-			return
-		var/obj/item/organ/external/affected = target.get_organ(target_zone)
-
-		var/msg = "\blue [user] applied \the [tool] to [target]'s [affected.encased]."
-		var/self_msg = "\blue You applied \the [tool] to [target]'s [affected.encased]."
-		user.visible_message(msg, self_msg)
-
-		affected.open = 2
+/decl/surgery_step/open_encased/fail_step(mob/living/user, mob/living/carbon/human/target, target_zone, obj/item/tool)
+	var/obj/item/organ/external/affected = target.get_organ(target_zone)
+	user.visible_message("<span class='warning'>[user]'s hand slips, cracking [target]'s [affected.encased] with \the [tool]!</span>" , \
+	"<span class='warning'>Your hand slips, cracking [target]'s [affected.encased] with \the [tool]!</span>" )
+	affected.take_external_damage(15, 0, (DAMAGE_FLAG_SHARP|DAMAGE_FLAG_EDGE), used_weapon = tool)
+	affected.fracture()

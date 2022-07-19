@@ -1,11 +1,13 @@
 /obj/item/device/uv_light
 	name = "\improper UV light"
 	desc = "A small handheld black light."
+	icon = 'icons/obj/uv_light.dmi'
 	icon_state = "uv_off"
 	slot_flags = SLOT_BELT
-	w_class = 2
+	w_class = ITEM_SIZE_SMALL
 	item_state = "electronic"
-	matter = list(DEFAULT_WALL_MATERIAL = 150)
+	action_button_name = "Toggle UV light"
+	matter = list(MATERIAL_STEEL = 150)
 	origin_tech = list(TECH_MAGNET = 1, TECH_ENGINEERING = 1)
 
 	var/list/scanned = list()
@@ -19,19 +21,19 @@
 /obj/item/device/uv_light/attack_self(var/mob/user)
 	on = !on
 	if(on)
-		set_light(range, 2, "#007fff")
-		processing_objects |= src
+		set_light(0.5, 0.1, range, 2, "#007fff")
+		START_PROCESSING(SSobj, src)
 		icon_state = "uv_on"
 	else
 		set_light(0)
 		clear_last_scan()
-		processing_objects -= src
+		STOP_PROCESSING(SSobj, src)
 		icon_state = "uv_off"
 
 /obj/item/device/uv_light/proc/clear_last_scan()
 	if(scanned.len)
 		for(var/atom/O in scanned)
-			O.invisibility = scanned[O]
+			O.set_invisibility(scanned[O])
 			if(O.fluorescent == 2) O.fluorescent = 1
 		scanned.Cut()
 	if(stored_alpha.len)
@@ -45,7 +47,7 @@
 			if(I.fluorescent == 2) I.fluorescent = 1
 		reset_objects.Cut()
 
-/obj/item/device/uv_light/process()
+/obj/item/device/uv_light/Process()
 	clear_last_scan()
 	if(on)
 		step_alpha = round(255/range)
@@ -59,7 +61,7 @@
 					A.fluorescent = 2 //To prevent light crosstalk.
 					if(A.invisibility)
 						scanned[A] = A.invisibility
-						A.invisibility = 0
+						A.set_invisibility(0)
 						stored_alpha[A] = A.alpha
 						A.alpha = use_alpha
 					if(istype(A, /obj/item))

@@ -9,21 +9,29 @@
 /obj/machinery/power
 	name = null
 	icon = 'icons/obj/power.dmi'
-	anchored = 1.0
+	anchored = TRUE
 	var/datum/powernet/powernet = null
-	use_power = 0
+	use_power = POWER_USE_OFF
 	idle_power_usage = 0
 	active_power_usage = 0
 
+/obj/machinery/power/Initialize()
+	. = ..()
+	connect_to_network()
+
 /obj/machinery/power/Destroy()
 	disconnect_from_network()
-	disconnect_terminal()
-
-	..()
+	. = ..()
 
 ///////////////////////////////
 // General procedures
 //////////////////////////////
+
+
+/obj/machinery/power/powered()
+	if(use_power)
+		return ..()
+	return 1 //doesn't require an external power source
 
 // common helper procs for all power machines
 /obj/machinery/power/drain_power(var/drain_check, var/surge, var/amount = 0)
@@ -57,47 +65,6 @@
 	else
 		return 0
 
-/obj/machinery/power/proc/disconnect_terminal() // machines without a terminal will just return, no harm no fowl.
-	return
-
-// returns true if the area has power on given channel (or doesn't require power).
-// defaults to power_channel
-/obj/machinery/proc/powered(var/chan = -1) // defaults to power_channel
-
-	if(!src.loc)
-		return 0
-
-	//Don't do this. It allows machines that set use_power to 0 when off (many machines) to
-	//be turned on again and used after a power failure because they never gain the NOPOWER flag.
-	//if(!use_power)
-	//	return 1
-
-	var/area/A = src.loc.loc		// make sure it's in an area
-	if(!A || !isarea(A))
-		return 0					// if not, then not powered
-	if(chan == -1)
-		chan = power_channel
-	return A.powered(chan)			// return power status of the area
-
-// increment the power usage stats for an area
-/obj/machinery/proc/use_power(var/amount, var/chan = -1) // defaults to power_channel
-	var/area/A = get_area(src)		// make sure it's in an area
-	if(!A || !isarea(A))
-		return
-	if(chan == -1)
-		chan = power_channel
-	A.use_power(amount, chan)
-
-/obj/machinery/proc/power_change()		// called whenever the power settings of the containing area change
-										// by default, check equipment channel & set flag
-										// can override if needed
-	if(powered(power_channel))
-		stat &= ~NOPOWER
-	else
-
-		stat |= NOPOWER
-	return
-
 // connect the machine to a powernet if a node cable is present on the turf
 /obj/machinery/power/proc/connect_to_network()
 	var/turf/T = src.loc
@@ -120,9 +87,11 @@
 
 // attach a wire to a power machine - leads from the turf you are standing on
 //almost never called, overwritten by all power machines but terminal and generator
-/obj/machinery/power/attackby(obj/item/weapon/W, mob/user)
+/obj/machinery/power/attackby(obj/item/W, mob/user)
+	if((. = ..()))
+		return
 
-	if(istype(W, /obj/item/stack/cable_coil))
+	if(isCoil(W))
 
 		var/obj/item/stack/cable_coil/coil = W
 
@@ -135,10 +104,7 @@
 			return
 
 		coil.turf_place(T, user)
-		return
-	else
-		..()
-	return
+		return TRUE
 
 ///////////////////////////////////////////
 // Powernet handling helpers
@@ -153,7 +119,7 @@
 	var/cdir
 	var/turf/T
 
-	for(var/card in cardinal)
+	for(var/card in GLOB.cardinal)
 		T = get_step(loc,card)
 		cdir = get_dir(T,loc)
 
@@ -172,7 +138,7 @@
 	var/cdir
 	var/turf/T
 
-	for(var/card in cardinal)
+	for(var/card in GLOB.cardinal)
 		T = get_step(loc,card)
 		cdir = get_dir(T,loc)
 
@@ -200,16 +166,8 @@
 // if unmarked==1, only return those with no powernet
 /proc/power_list(var/turf/T, var/source, var/d, var/unmarked=0, var/cable_only = 0)
 	. = list()
-	var/fdir = (!d)? 0 : turn(d, 180)			// the opposite direction to d (or 0 if d==0)
-///// Z-Level Stuff
-	var/Zdir
-	if(d==11)
-		Zdir = 11
-	else if (d==12)
-		Zdir = 12
-	else
-		Zdir = 999
-///// Z-Level Stuff
+
+	var/reverse = d ? GLOB.reverse_dir[d] : 0
 	for(var/AM in T)
 		if(AM == source)	continue			//we don't want to return source
 
@@ -225,33 +183,13 @@
 			var/obj/structure/cable/C = AM
 
 			if(!unmarked || !C.powernet)
-///// Z-Level Stuff
-				if(C.d1 == fdir || C.d2 == fdir || C.d1 == Zdir || C.d2 == Zdir)
-///// Z-Level Stuff
-					. += C
-				else if(C.d1 == d || C.d2 == d)
+				if(C.d1 == d || C.d2 == d || C.d1 == reverse || C.d2 == reverse )
 					. += C
 	return .
 
-/hook/startup/proc/buildPowernets()
-	return makepowernets()
-
-// rebuild all power networks from scratch - only called at world creation or by the admin verb
-/proc/makepowernets()
-	for(var/datum/powernet/PN in powernets)
-		qdel(PN)
-	powernets.Cut()
-
-	for(var/obj/structure/cable/PC in cable_list)
-		if(!PC.powernet)
-			var/datum/powernet/NewPN = new()
-			NewPN.add_cable(PC)
-			propagate_network(PC,PC.powernet)
-	return 1
-
 //remove the old powernet and replace it with a new one throughout the network.
 /proc/propagate_network(var/obj/O, var/datum/powernet/PN)
-	//world.log << "propagating new network"
+	//to_world_log("propagating new network")
 	var/list/worklist = list()
 	var/list/found_machines = list()
 	var/index = 1
@@ -314,7 +252,6 @@
 //source is an object caused electrocuting (airlock, grille, etc)
 //No animations will be performed by this proc.
 /proc/electrocute_mob(mob/living/carbon/M as mob, var/power_source, var/obj/source, var/siemens_coeff = 1.0)
-	if(istype(M.loc,/obj/mecha))	return 0	//feckin mechs are dumb
 	var/area/source_area
 	if(istype(power_source,/area))
 		source_area = power_source
@@ -324,17 +261,18 @@
 		power_source = Cable.powernet
 
 	var/datum/powernet/PN
-	var/obj/item/weapon/cell/cell
+	var/obj/item/cell/cell
 
 	if(istype(power_source,/datum/powernet))
 		PN = power_source
-	else if(istype(power_source,/obj/item/weapon/cell))
+	else if(istype(power_source,/obj/item/cell))
 		cell = power_source
 	else if(istype(power_source,/obj/machinery/power/apc))
 		var/obj/machinery/power/apc/apc = power_source
-		cell = apc.cell
-		if (apc.terminal)
-			PN = apc.terminal.powernet
+		cell = apc.get_cell()
+		var/obj/machinery/power/terminal/term = apc.terminal()
+		if (term)
+			PN = term.powernet
 	else if (!power_source)
 		return 0
 	else
@@ -346,7 +284,7 @@
 		PN.trigger_warning(5)
 	if(istype(M,/mob/living/carbon/human))
 		var/mob/living/carbon/human/H = M
-		if(H.species.siemens_coefficient == 0)
+		if(H.species.siemens_coefficient <= 0)
 			return
 		if(H.gloves)
 			var/obj/item/clothing/gloves/G = H.gloves
@@ -376,10 +314,10 @@
 	var/drained_energy = drained_hp*20
 
 	if (source_area)
-		source_area.use_power(drained_energy/CELLRATE)
+		source_area.use_power_oneoff(drained_energy/CELLRATE)
 	else if (istype(power_source,/datum/powernet))
 		var/drained_power = drained_energy/CELLRATE
 		drained_power = PN.draw_power(drained_power)
-	else if (istype(power_source, /obj/item/weapon/cell))
+	else if (istype(power_source, /obj/item/cell))
 		cell.use(drained_energy)
 	return drained_energy

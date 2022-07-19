@@ -1,10 +1,43 @@
-/mob/living/carbon/human/say(var/message)
-	var/alt_name = ""
+/mob/living/carbon/human/say(var/message, var/datum/language/speaking = null, whispering)
 	if(name != GetVoice())
-		alt_name = "(as [get_id_name("Unknown")])"
+		if(get_id_name("Unknown") == GetVoice())
+			SetName(get_id_name("Unknown"))
+
+	//parse the language code and consume it
+	if(!speaking)
+		speaking = parse_language(message)
+		if (speaking)
+			message = copytext_char(message,2+length_char(speaking.key))
+		else
+			speaking = get_any_good_language(set_default=TRUE)
+			if (!speaking)
+				to_chat(src, SPAN_WARNING("You don't know a language and cannot speak."))
+				emote("custom", AUDIBLE_MESSAGE, "[pick("grunts", "babbles", "gibbers", "jabbers", "burbles")] aimlessly.")
+				return
+
+	if(has_chem_effect(CE_VOICELOSS, 1))
+		whispering = TRUE
 
 	message = sanitize(message)
-	..(message, alt_name = alt_name)
+	var/obj/item/organ/internal/voicebox/vox = locate() in internal_organs
+	var/snowflake_speak = (speaking && (speaking.flags & (NONVERBAL|SIGNLANG))) || (vox && vox.is_usable() && vox.assists_languages[speaking])
+	if(!isSynthetic() && need_breathe() && failed_last_breath && !snowflake_speak)
+		var/obj/item/organ/internal/lungs/L = internal_organs_by_name[species.breathing_organ]
+		if(!L || L.breath_fail_ratio > 0.9)
+			if(L && world.time < L.last_successful_breath + 2 MINUTES) //if we're in grace suffocation period, give it up for last words
+				to_chat(src, "<span class='warning'>You use your remaining air to say something!</span>")
+				L.last_successful_breath = world.time - 2 MINUTES
+				return ..(message, speaking = speaking)
+
+			to_chat(src, "<span class='warning'>You don't have enough air[L ? " in [L]" : ""] to make a sound!</span>")
+			return
+		else if(L.breath_fail_ratio > 0.7)
+			whisper_say(length(message) > 5 ? stars(message) : message, speaking)
+		else if(L.breath_fail_ratio > 0.4 && length(message) > 10)
+			whisper_say(message, speaking)
+	else
+		return ..(message, speaking = speaking, whispering = whispering)
+
 
 /mob/living/carbon/human/proc/forcesay(list/append)
 	if(stat == CONSCIOUS)
@@ -12,10 +45,11 @@
 			var/virgin = 1	//has the text been modified yet?
 			var/temp = winget(client, "input", "text")
 			if(findtextEx(temp, "Say \"", 1, 7) && length(temp) > 5)	//case sensitive means
+				var/main_key = get_prefix_key(/decl/prefix/radio_main_channel)
+				temp = replacetext(temp, main_key, "")	//general radio
 
-				temp = replacetext(temp, ";", "")	//general radio
-
-				if(findtext(trim_left(temp), ":", 6, 7))	//dept radio
+				var/channel_key = get_prefix_key(/decl/prefix/radio_channel_selection)
+				if(findtext(trim_left(temp), channel_key, 6, 7))	//dept radio
 					temp = copytext(trim_left(temp), 8)
 					virgin = 0
 
@@ -23,10 +57,11 @@
 					temp = copytext(trim_left(temp), 6)	//normal speech
 					virgin = 0
 
-				while(findtext(trim_left(temp), ":", 1, 2))	//dept radio again (necessary)
+				while(findtext(trim_left(temp), channel_key, 1, 2))	//dept radio again (necessary)
 					temp = copytext(trim_left(temp), 3)
 
-				if(findtext(temp, "*", 1, 2))	//emotes
+				var/custom_emote_key = get_prefix_key(/decl/prefix/custom_emote)
+				if(findtext(temp, custom_emote_key, 1, 2))	//emotes
 					return
 				temp = copytext(trim_left(temp), 1, rand(5,8))
 
@@ -69,51 +104,37 @@
 /mob/living/carbon/human/GetVoice()
 
 	var/voice_sub
-	if(istype(back,/obj/item/weapon/rig))
-		var/obj/item/weapon/rig/rig = back
+	if(istype(back,/obj/item/rig))
+		var/obj/item/rig/rig = back
 		// todo: fix this shit
 		if(rig.speech && rig.speech.voice_holder && rig.speech.voice_holder.active && rig.speech.voice_holder.voice)
 			voice_sub = rig.speech.voice_holder.voice
-	else
-		for(var/obj/item/gear in list(wear_mask,wear_suit,head))
+
+	if(!voice_sub)
+
+		var/list/check_gear = list(wear_mask, head)
+		if(wearing_rig)
+			var/datum/extension/armor/rig/armor_datum = get_extension(wearing_rig, /datum/extension/armor)
+			if(istype(armor_datum) && armor_datum.sealed && wearing_rig.helmet == head)
+				check_gear |= wearing_rig
+
+		for(var/obj/item/gear in check_gear)
 			if(!gear)
 				continue
 			var/obj/item/voice_changer/changer = locate() in gear
 			if(changer && changer.active && changer.voice)
 				voice_sub = changer.voice
+	if(fake_name)
+		return fake_name
 	if(voice_sub)
 		return voice_sub
 	if(mind && mind.changeling && mind.changeling.mimicing)
 		return mind.changeling.mimicing
-	if(GetSpecialVoice())
-		return GetSpecialVoice()
 	return real_name
-
-/mob/living/carbon/human/proc/SetSpecialVoice(var/new_voice)
-	if(new_voice)
-		special_voice = new_voice
-	return
-
-/mob/living/carbon/human/proc/UnsetSpecialVoice()
-	special_voice = ""
-	return
-
-/mob/living/carbon/human/proc/GetSpecialVoice()
-	return special_voice
-
-
-/*
-   ***Deprecated***
-   let this be handled at the hear_say or hear_radio proc
-   This is left in for robot speaking when humans gain binary channel access until I get around to rewriting
-   robot_talk() proc.
-   There is no language handling build into it however there is at the /mob level so we accept the call
-   for it but just ignore it.
-*/
 
 /mob/living/carbon/human/say_quote(var/message, var/datum/language/speaking = null)
 	var/verb = "says"
-	var/ending = copytext(message, length(message))
+	var/ending = copytext(message, -1)
 
 	if(speaking)
 		verb = speaking.get_spoken_verb(ending)
@@ -125,48 +146,30 @@
 
 	return verb
 
-/mob/living/carbon/human/handle_speech_problems(var/message, var/verb)
-	if(silent || (sdisabilities & MUTE))
-		message = ""
-		speech_problem_flag = 1
+/mob/living/carbon/human/handle_speech_problems(var/list/message_data)
+	if(silent || (sdisabilities & MUTED))
+		message_data[1] = ""
+		. = 1
+
 	else if(istype(wear_mask, /obj/item/clothing/mask))
 		var/obj/item/clothing/mask/M = wear_mask
 		if(M.voicechange)
-			message = pick(M.say_messages)
-			verb = pick(M.say_verbs)
-			speech_problem_flag = 1
+			message_data[1] = pick(M.say_messages)
+			message_data[2] = pick(M.say_verbs)
+			. = 1
 
-	if(message != "")
-		var/list/parent = ..()
-		message = parent[1]
-		verb = parent[2]
-		if(parent[3])
-			speech_problem_flag = 1
-
-		var/braindam = getBrainLoss()
-		if(braindam >= 60)
-			speech_problem_flag = 1
-			if(prob(braindam/4))
-				message = stutter(message)
-				verb = pick("stammers", "stutters")
-			if(prob(braindam))
-				message = uppertext(message)
-				verb = "yells loudly"
-
-	var/list/returns[3]
-	returns[1] = message
-	returns[2] = verb
-	returns[3] = speech_problem_flag
-	return returns
+	else
+		. = ..(message_data)
 
 /mob/living/carbon/human/handle_message_mode(message_mode, message, verb, speaking, used_radios, alt_name)
 	switch(message_mode)
 		if("intercom")
 			if(!src.restrained())
-				for(var/obj/item/device/radio/intercom/I in view(1))
-					I.talk_into(src, message, null, verb, speaking)
-					I.add_fingerprint(src)
-					used_radios += I
+				for(var/obj/item/device/radio/I in view(1))
+					if(I.intercom_handling)
+						I.talk_into(src, message, null, verb, speaking)
+						I.add_fingerprint(src)
+						used_radios += I
 		if("headset")
 			if(l_ear && istype(l_ear,/obj/item/device/radio))
 				var/obj/item/device/radio/R = l_ear
@@ -200,8 +203,8 @@
 			if(has_radio)
 				R.talk_into(src,message,null,verb,speaking)
 				used_radios += R
-		if("whisper")
-			whisper_say(message, speaking, alt_name)
+		if("whisper") //It's going to get sanitized again immediately, so decode.
+			whisper_say(html_decode(message), speaking, alt_name)
 			return 1
 		else
 			if(message_mode)
@@ -217,4 +220,26 @@
 		var/list/returns[2]
 		returns[1] = sound(pick(species.speech_sounds))
 		returns[2] = 50
+		return returns
 	return ..()
+
+/mob/living/carbon/human/can_speak(datum/language/speaking)
+	if(species && speaking && (speaking.name in species.assisted_langs))
+		for(var/obj/item/organ/internal/voicebox/I in src.internal_organs)
+			if(I.is_usable() && I.assists_languages[speaking])
+				return TRUE
+		return FALSE
+	. = ..()
+
+/mob/living/carbon/human/parse_language(var/message)
+	var/prefix = copytext_char(message,1,2)
+	if(length(message) >= 1 && prefix == get_prefix_key(/decl/prefix/audible_emote))
+		return all_languages["Noise"]
+
+	if(length(message) >= 2 && is_language_prefix(prefix))
+		var/language_prefix = lowertext(copytext_char(message, 2 ,3))
+		var/datum/language/L = language_keys[language_prefix]
+		if (can_speak(L))
+			return L
+
+	return null

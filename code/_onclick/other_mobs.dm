@@ -25,20 +25,28 @@
 /atom/proc/attack_hand(mob/user as mob)
 	return
 
+/mob/proc/attack_empty_hand(var/bp_hand)
+	return
+
 /mob/living/carbon/human/RestrainedClickOn(var/atom/A)
 	return
 
-/mob/living/carbon/human/RangedAttack(var/atom/A)
-	if(!gloves && !mutations.len) return
-	var/obj/item/clothing/gloves/G = gloves
-	if((LASER in mutations) && a_intent == I_HURT)
-		LaserEyes(A) // moved into a proc below
+/mob/living/CtrlClickOn(var/atom/A)
+	. = ..()
+	if(!. && a_intent == I_GRAB && length(available_maneuvers))
+		. = perform_maneuver(prepared_maneuver || available_maneuvers[1], A)
 
-	else if(istype(G) && G.Touch(A,0)) // for magic gloves
-		return
+/mob/living/carbon/human/RangedAttack(var/atom/A, var/params)
+	//Climbing up open spaces
+	if((istype(A, /turf/simulated/floor) || istype(A, /turf/unsimulated/floor) || istype(A, /obj/structure/lattice) || istype(A, /obj/structure/catwalk)) && isturf(loc) && bound_overlay && !is_physically_disabled()) //Climbing through openspace
+		return climb_up(A)
 
-	else if(TK in mutations)
-		A.attack_tk(src)
+	if(gloves)
+		var/obj/item/clothing/gloves/G = gloves
+		if(istype(G) && G.Touch(A,0)) // for magic gloves
+			return TRUE
+
+	. = ..()
 
 /mob/living/RestrainedClickOn(var/atom/A)
 	return
@@ -55,6 +63,7 @@
 	if(!..())
 		return 0
 
+	setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
 	A.attack_generic(src,rand(5,6),"bitten")
 
 /*
@@ -76,21 +85,21 @@
 			Feedstop()
 		return
 
+	//should have already been set if we are attacking a mob, but it doesn't hurt and will cover attacking non-mobs too
+	setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
 	var/mob/living/M = A
-	if (istype(M))
+	if(!istype(M))
+		A.attack_generic(src, (is_adult ? rand(20,40) : rand(5,25)), "glomped") // Basic attack.
+	else
+		var/power = max(0, min(10, (powerlevel + rand(0, 3))))
 
 		switch(src.a_intent)
 			if (I_HELP) // We just poke the other
 				M.visible_message("<span class='notice'>[src] gently pokes [M]!</span>", "<span class='notice'>[src] gently pokes you!</span>")
 			if (I_DISARM) // We stun the target, with the intention to feed
 				var/stunprob = 1
-				var/power = max(0, min(10, (powerlevel + rand(0, 3))))
+
 				if (powerlevel > 0 && !istype(A, /mob/living/carbon/slime))
-					if(ishuman(M))
-						var/mob/living/carbon/human/H = M
-						stunprob *= H.species.siemens_coefficient
-
-
 					switch(power * 10)
 						if(0) stunprob *= 10
 						if(1 to 2) stunprob *= 20
@@ -101,18 +110,8 @@
 						if(10) 	   stunprob *= 95
 
 				if(prob(stunprob))
-					powerlevel = max(0, powerlevel-3)
-					M.visible_message("<span class='danger'>[src] has shocked [M]!</span>", "<span class='danger'>[src] has shocked you!</span>")
-					M.Weaken(power)
-					M.Stun(power)
-					M.stuttering = max(M.stuttering, power)
-
-					var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-					s.set_up(5, 1, M)
-					s.start()
-
-					if(prob(stunprob) && powerlevel >= 8)
-						M.adjustFireLoss(powerlevel * rand(6,10))
+					var/shock_damage = max(0, powerlevel-3) * rand(6,10)
+					M.electrocute_act(shock_damage, src, 1.0, ran_zone())
 				else if(prob(40))
 					M.visible_message("<span class='danger'>[src] has pounced at [M]!</span>", "<span class='danger'>[src] has pounced at you!</span>")
 					M.Weaken(power)
@@ -122,9 +121,12 @@
 			if (I_GRAB) // We feed
 				Wrap(M)
 			if (I_HURT) // Attacking
-				A.attack_generic(src, (is_adult ? rand(20,40) : rand(5,25)), "glomped")
-	else
-		A.attack_generic(src, (is_adult ? rand(20,40) : rand(5,25)), "glomped") // Basic attack.
+				if(iscarbon(M) && prob(15))
+					M.visible_message("<span class='danger'>[src] has pounced at [M]!</span>", "<span class='danger'>[src] has pounced at you!</span>")
+					M.Weaken(power)
+				else
+					A.attack_generic(src, (is_adult ? rand(20,40) : rand(5,25)), "glomped")
+
 /*
 	New Players:
 	Have no reason to click on anything at all.
@@ -139,11 +141,18 @@
 
 	if(!..())
 		return
+	setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
+	if(istype(A,/mob/living))
+		if(!get_natural_weapon() || a_intent == I_HELP)
+			custom_emote(1,"[friendly] [A]!")
+			return
+		if(ckey)
+			admin_attack_log(src, A, "Has attacked its victim.", "Has been attacked by its attacker.")
+	if(a_intent == I_HELP)
+		A.attack_animal(src)
+	else if (get_natural_weapon())
+		A.attackby(get_natural_weapon(), src)
 
-	if(melee_damage_upper == 0 && istype(A,/mob/living))
-		custom_emote(1,"[friendly] [A]!")
-		return
-
-	var/damage = rand(melee_damage_lower, melee_damage_upper)
-	if(A.attack_generic(src,damage,attacktext,environment_smash) && loc && attack_sound)
-		playsound(loc, attack_sound, 50, 1, 1)
+// Attack hand but for simple animals
+/atom/proc/attack_animal(mob/user)
+	return attack_hand(user)

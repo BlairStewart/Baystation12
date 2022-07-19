@@ -1,195 +1,214 @@
-/* Types of tanks!
- * Contains:
- *		Oxygen
- *		Anesthetic
- *		Air
- *		Phoron
- *		Emergency Oxygen
- */
+/obj/item/tank/scrubber
+	name = "high capacity gas tank"
+	desc = "An unwieldy tank for lots of gas, although not lots of GAS."
+	icon_state = "scrubber"
+	slot_flags = EMPTY_BITFIELD
+	w_class = ITEM_SIZE_HUGE
+	tank_size = TANK_SIZE_HUGE
+	gauge_icon = null
+	volume = 450
 
-/*
- * Oxygen
- */
-/obj/item/weapon/tank/oxygen
+
+/obj/item/tank/oxygen
 	name = "oxygen tank"
 	desc = "A tank of oxygen."
 	icon_state = "oxygen"
-	distribute_pressure = ONE_ATMOSPHERE*O2STANDARD
+	volume = 180
+	tank_size = TANK_SIZE_LARGE
+	distribute_pressure = ONE_ATMOSPHERE * O2STANDARD
+	starting_pressure = list(
+		GAS_OXYGEN = 6 * ONE_ATMOSPHERE
+	)
 
 
-	New()
-		..()
-		air_contents.adjust_gas("oxygen", (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
-		return
+/obj/item/tank/oxygen_yellow
+	name = "oxygen tank"
+	desc = "A tank of oxygen."
+	icon_state = "oxygen_yellow"
+	volume = 180
+	tank_size = TANK_SIZE_LARGE
+	distribute_pressure = ONE_ATMOSPHERE * O2STANDARD
+	starting_pressure = list(
+		GAS_OXYGEN = 6 * ONE_ATMOSPHERE
+	)
 
 
-	examine(mob/user)
-		if(..(user, 0) && air_contents.gas["oxygen"] < 10)
-			user << text("<span class='warning'>The meter on \the [src] indicates you are almost out of oxygen!</span>")
-			//playsound(usr, 'sound/effects/alert.ogg', 50, 1)
+/obj/item/tank/nitrogen
+	name = "nitrogen tank"
+	desc = "A tank of nitrogen."
+	icon_state = "nitrogen"
+	volume = 180
+	tank_size = TANK_SIZE_LARGE
+	distribute_pressure = ONE_ATMOSPHERE * O2STANDARD
+	starting_pressure = list(
+		GAS_NITROGEN = 6 * ONE_ATMOSPHERE
+	)
 
 
-/obj/item/weapon/tank/oxygen/yellow
-	desc = "A tank of oxygen, this one is yellow."
-	icon_state = "oxygen_f"
-
-/obj/item/weapon/tank/oxygen/red
-	desc = "A tank of oxygen, this one is red."
-	icon_state = "oxygen_fr"
-
-
-/*
- * Anesthetic
- */
-/obj/item/weapon/tank/anesthetic
-	name = "anesthetic tank"
-	desc = "A tank with an N2O/O2 gas mix."
-	icon_state = "anesthetic"
-	item_state = "an_tank"
-
-/obj/item/weapon/tank/anesthetic/New()
-	..()
-
-	air_contents.gas["oxygen"] = (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C) * O2STANDARD
-	air_contents.gas["sleeping_agent"] = (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C) * N2STANDARD
-	air_contents.update_values()
-
-	return
-
-/*
- * Air
- */
-/obj/item/weapon/tank/air
+/obj/item/tank/air
 	name = "air tank"
 	desc = "Mixed anyone?"
 	icon_state = "oxygen"
+	volume = 180
+	tank_size = TANK_SIZE_LARGE
+	starting_pressure = list(
+		GAS_OXYGEN = 6 * ONE_ATMOSPHERE * O2STANDARD,
+		GAS_NITROGEN = 6 * ONE_ATMOSPHERE * N2STANDARD
+	)
 
 
-	examine(mob/user)
-		if(..(user, 0) && air_contents.gas["oxygen"] < 1 && loc==user)
-			user << "<span class='danger'>The meter on the [src.name] indicates you are almost out of air!</span>"
-			user << sound('sound/effects/alert.ogg')
+/obj/item/tank/anesthetic
+	name = "anesthetic tank"
+	desc = "The dentist's friend."
+	icon_state = "anesthetic"
+	item_state = "an_tank"
+	volume = 270
+	tank_size = TANK_SIZE_LARGE
+	starting_pressure = list(
+		GAS_OXYGEN = 6 * ONE_ATMOSPHERE * O2STANDARD,
+		GAS_N2O = 6 * ONE_ATMOSPHERE * N2STANDARD
+	)
 
-/obj/item/weapon/tank/air/New()
-	..()
 
-	src.air_contents.adjust_multi("oxygen", (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C) * O2STANDARD, "nitrogen", (6*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C) * N2STANDARD)
-
-	return
-
-
-/*
- * Phoron
- */
-/obj/item/weapon/tank/phoron
+/obj/item/tank/phoron
 	name = "phoron tank"
-	desc = "Contains dangerous phoron. Do not inhale. Warning: extremely flammable."
+	desc = "Do not inhale."
 	icon_state = "phoron"
+	w_class = ITEM_SIZE_NORMAL
+	slot_flags = null
 	gauge_icon = null
-	flags = CONDUCT
-	slot_flags = null	//they have no straps!
+	starting_pressure = list(
+		GAS_PHORON = 3 * ONE_ATMOSPHERE
+	)
 
 
-/obj/item/weapon/tank/phoron/New()
-	..()
+/obj/item/tank/hydrogen
+	name = "hydrogen tank"
+	desc = "Fizzy lifting gas."
+	icon_state = "hydrogen"
+	w_class = ITEM_SIZE_NORMAL
+	slot_flags = null
+	gauge_icon = null
+	starting_pressure = list(
+		GAS_HYDROGEN = 3 * ONE_ATMOSPHERE
+	)
 
-	src.air_contents.adjust_gas("phoron", (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C))
-	return
 
-/obj/item/weapon/tank/phoron/attackby(obj/item/weapon/W as obj, mob/user as mob)
-	..()
-
-	if (istype(W, /obj/item/weapon/flamethrower))
-		var/obj/item/weapon/flamethrower/F = W
-		if ((!F.status)||(F.ptank))	return
-		src.master = F
-		F.ptank = src
-		user.remove_from_mob(src)
-		src.loc = F
-	return
-
-/*
- * Emergency Oxygen
- */
-/obj/item/weapon/tank/emergency_oxygen
+/obj/item/tank/oxygen_emergency
 	name = "emergency oxygen tank"
-	desc = "Used for emergencies. Contains very little oxygen, so try to conserve it until you actually need it."
+	desc = "A tank of emergency oxygen. This one is tiny."
 	icon_state = "emergency"
+	w_class = ITEM_SIZE_SMALL
+	slot_flags = SLOT_BELT
+	attack_cooldown = DEFAULT_WEAPON_COOLDOWN
+	force = 5
+	melee_accuracy_bonus = -10
 	gauge_icon = "indicator_emergency"
 	gauge_cap = 4
-	flags = CONDUCT
-	slot_flags = SLOT_BELT
-	w_class = 2.0
-	force = 4.0
-	distribute_pressure = ONE_ATMOSPHERE*O2STANDARD
-	volume = 2 //Tiny. Real life equivalents only have 21 breaths of oxygen in them. They're EMERGENCY tanks anyway -errorage (dangercon 2011)
+	tank_size = TANK_SIZE_SMALL
+	volume = 40
+	distribute_pressure = ONE_ATMOSPHERE * O2STANDARD
+	starting_pressure = list(
+		GAS_OXYGEN = 10 * ONE_ATMOSPHERE
+	)
 
 
-	New()
-		..()
-		src.air_contents.adjust_gas("oxygen", (3*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
-
-		return
-
-
-	examine(mob/user)
-		if(..(user, 0) && air_contents.gas["oxygen"] < 0.2 && loc==user)
-			user << text("<span class='danger'>The meter on the [src.name] indicates you are almost out of air!</span>")
-			user << sound('sound/effects/alert.ogg')
-
-/obj/item/weapon/tank/emergency_oxygen/engi
-	name = "extended-capacity emergency oxygen tank"
+/obj/item/tank/oxygen_emergency_extended
+	name = "emergency oxygen tank"
+	desc = "A tank of emergency oxygen. This one is small."
 	icon_state = "emergency_engi"
-	volume = 6
-
-/obj/item/weapon/tank/emergency_oxygen/double
-	name = "double emergency oxygen tank"
-	icon_state = "emergency_double"
-	gauge_icon = "indicator_emergency_double"
-	volume = 10
-
-/obj/item/weapon/tank/emergency_nitrogen
-	name = "emergency nitrogen tank"
-	desc = "An emergency air tank hastily painted red and issued to Vox crewmembers."
-	icon_state = "emergency_nitro"
+	w_class = ITEM_SIZE_SMALL
+	slot_flags = SLOT_BELT
+	attack_cooldown = DEFAULT_WEAPON_COOLDOWN
+	force = 7
+	melee_accuracy_bonus = -10
 	gauge_icon = "indicator_emergency"
 	gauge_cap = 4
-	flags = CONDUCT
+	tank_size = TANK_SIZE_SMALL
+	volume = 60
+	distribute_pressure = ONE_ATMOSPHERE * O2STANDARD
+	starting_pressure = list(
+		GAS_OXYGEN = 10 * ONE_ATMOSPHERE
+	)
+
+
+/obj/item/tank/oxygen_emergency_double
+	name = "emergency oxygen tank"
+	desc = "A tank of emergency oxygen. This one is unwieldy."
+	icon_state = "emergency_double"
+	w_class = ITEM_SIZE_NORMAL
 	slot_flags = SLOT_BELT
-	w_class = 2.0
-	force = 4.0
-	distribute_pressure = ONE_ATMOSPHERE*O2STANDARD
-	volume = 2
-	
-	New()
-		..()
-		src.air_contents.adjust_gas("nitrogen", (3*ONE_ATMOSPHERE)*volume/(R_IDEAL_GAS_EQUATION*T20C))
-
-		return
-
-
-	examine(mob/user)
-		if(..(user, 0) && air_contents.gas["nitrogen"] < 0.2 && loc==user)
-			user << text("<span class='danger'>The meter on \the [src] indicates you are almost out of air!</span>")
-			user << sound('sound/effects/alert.ogg')
-
-/*
- * Nitrogen
- */
-/obj/item/weapon/tank/nitrogen
-	name = "nitrogen tank"
-	desc = "A tank of nitrogen."
-	icon_state = "oxygen_fr"
-	distribute_pressure = ONE_ATMOSPHERE*O2STANDARD
+	attack_cooldown = DEFAULT_WEAPON_COOLDOWN
+	force = 8
+	melee_accuracy_bonus = -10
+	gauge_icon = "indicator_emergency_double"
+	gauge_cap = 4
+	volume = 80
+	distribute_pressure = ONE_ATMOSPHERE * O2STANDARD
+	starting_pressure = list(
+		GAS_OXYGEN = 10 * ONE_ATMOSPHERE
+	)
 
 
-/obj/item/weapon/tank/nitrogen/New()
-	..()
+/obj/item/tank/oxygen_scba
+	name = "emergency oxygen tank"
+	desc = "A tank of emergency oxygen. This one is unwieldy but comes with straps."
+	icon_state = "emergency_scuba"
+	w_class = ITEM_SIZE_NORMAL
+	slot_flags = SLOT_BELT | SLOT_BACK
+	attack_cooldown = DEFAULT_WEAPON_COOLDOWN
+	force = 8
+	melee_accuracy_bonus = -10
+	gauge_icon = null
+	volume = 80
+	distribute_pressure = ONE_ATMOSPHERE * O2STANDARD
+	starting_pressure = list(
+		GAS_OXYGEN = 10 * ONE_ATMOSPHERE
+	)
 
-	src.air_contents.adjust_gas("nitrogen", (3*ONE_ATMOSPHERE)*70/(R_IDEAL_GAS_EQUATION*T20C))
-	return
 
-/obj/item/weapon/tank/nitrogen/examine(mob/user)
-	if(..(user, 0) && air_contents.gas["nitrogen"] < 10)
-		user << text("<span class='danger'>The meter on \the [src] indicates you are almost out of nitrogen!</span>")
-		//playsound(user, 'sound/effects/alert.ogg', 50, 1)
+/obj/item/tank/nitrogen_emergency
+	name = "emergency nitrogen tank"
+	desc = "A tank of emergency nitrogen. This one is tiny."
+	icon_state = "emergency_nitro"
+	w_class = ITEM_SIZE_SMALL
+	slot_flags = SLOT_BELT
+	attack_cooldown = DEFAULT_WEAPON_COOLDOWN
+	force = 5
+	melee_accuracy_bonus = -10
+	gauge_icon = "indicator_emergency"
+	gauge_cap = 4
+	tank_size = TANK_SIZE_SMALL
+	volume = 40
+	distribute_pressure = ONE_ATMOSPHERE * O2STANDARD
+	starting_pressure = list(
+		GAS_NITROGEN = 10 * ONE_ATMOSPHERE
+	)
+
+
+/obj/item/tank/nitrogen_emergency_double
+	name = "emergency nitrogen tank"
+	desc = "A tank of emergency nitrogen. This one is unwieldy."
+	icon_state = "emergency_double_nitrogen"
+	w_class = ITEM_SIZE_NORMAL
+	slot_flags = SLOT_BELT
+	attack_cooldown = DEFAULT_WEAPON_COOLDOWN
+	force = 8
+	melee_accuracy_bonus = -10
+	gauge_icon = "indicator_emergency_double"
+	gauge_cap = 4
+	volume = 80
+	distribute_pressure = ONE_ATMOSPHERE * O2STANDARD
+	starting_pressure = list(
+		GAS_NITROGEN = 10 * ONE_ATMOSPHERE
+	)
+
+
+/obj/item/tank/air_sac
+	name = "air sac"
+	desc = "A small, compressed air sac that fills with breathable air, to be used in emergencies."
+	icon_state = "air_sac"
+	unacidable = TRUE
+	gauge_icon = null
+	tank_size = TANK_SIZE_SMALL
+	volume = 20

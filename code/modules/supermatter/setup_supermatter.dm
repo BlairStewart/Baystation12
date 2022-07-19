@@ -6,7 +6,8 @@
 
 #define ENERGY_NITROGEN 115			// Roughly 8 emitter shots.
 #define ENERGY_CARBONDIOXIDE 150	// Roughly 10 emitter shots.
-#define ENERGY_PHORON 300			// Roughly 20 emitter shots. Phoron can take more but this is enough to max out both SMESs anyway.
+#define ENERGY_HYDROGEN 300			// Roughly 20 emitter shots.
+#define ENERGY_PHORON 500			// Roughly 40 emitter shots.
 
 
 /datum/admins/proc/setup_supermatter()
@@ -17,10 +18,10 @@
 	if (!istype(src,/datum/admins))
 		src = usr.client.holder
 	if (!istype(src,/datum/admins))
-		usr << "Error: you are not an admin!"
+		to_chat(usr, "Error: you are not an admin!")
 		return
 
-	var/response = input(usr, "Are you sure? This will start up the engine with selected gas as coolant.", "Engine setup") as null|anything in list("N2", "CO2", "PH", "Abort")
+	var/response = input(usr, "Are you sure? This will start up the engine with selected gas as coolant.", "Engine setup") as null|anything in list("N2", "CO2", "PH", "H2", "Abort")
 	if(!response || response == "Abort")
 		return
 
@@ -35,13 +36,16 @@
 	for(var/obj/effect/engine_setup/coolant_canister/C in world)
 		switch(response)
 			if("N2")
-				C.canister_type = /obj/machinery/portable_atmospherics/canister/nitrogen/engine_setup/
+				C.canister_type = /obj/machinery/portable_atmospherics/canister/nitrogen/engine_setup
 				continue
 			if("CO2")
-				C.canister_type = /obj/machinery/portable_atmospherics/canister/carbon_dioxide/engine_setup/
+				C.canister_type = /obj/machinery/portable_atmospherics/canister/carbon_dioxide/engine_setup
 				continue
 			if("PH")
-				C.canister_type = /obj/machinery/portable_atmospherics/canister/phoron/engine_setup/
+				C.canister_type = /obj/machinery/portable_atmospherics/canister/phoron/engine_setup
+				continue
+			if("H2")
+				C.canister_type = /obj/machinery/portable_atmospherics/canister/hydrogen/engine_setup
 				continue
 
 	for(var/obj/effect/engine_setup/core/C in world)
@@ -54,6 +58,9 @@
 				continue
 			if("PH")
 				C.energy_setting = ENERGY_PHORON
+				continue
+			if("H2")
+				C.energy_setting = ENERGY_HYDROGEN
 				continue
 
 	for(var/obj/effect/engine_setup/filter/F in world)
@@ -99,14 +106,14 @@
 
 
 
-/obj/effect/engine_setup/
+/obj/effect/engine_setup
 	name = "Engine Setup Marker"
 	desc = "You shouldn't see this."
 	invisibility = 101
-	anchored = 1
-	density = 0
+	anchored = TRUE
+	density = FALSE
 	icon = 'icons/mob/screen1.dmi'
-	icon_state = "x2"
+	icon_state = "x3"
 
 /obj/effect/engine_setup/proc/activate(var/last = 0)
 	return 1
@@ -114,7 +121,7 @@
 
 
 // Tries to locate a pump, enables it, and sets it to MAX. Triggers warning if unable to locate a pump.
-/obj/effect/engine_setup/pump_max/
+/obj/effect/engine_setup/pump_max
 	name = "Pump Setup Marker"
 
 /obj/effect/engine_setup/pump_max/activate()
@@ -124,14 +131,14 @@
 		log_and_message_admins("## WARNING: Unable to locate pump at [x] [y] [z]!")
 		return SETUP_WARNING
 	P.target_pressure = P.max_pressure_setting
-	P.use_power = 1
+	P.update_use_power(POWER_USE_IDLE)
 	P.update_icon()
 	return SETUP_OK
 
 
 
 // Spawns an empty canister on this turf, if it has a connector port. Triggers warning if unable to find a connector port
-/obj/effect/engine_setup/empty_canister/
+/obj/effect/engine_setup/empty_canister
 	name = "Empty Canister Marker"
 
 /obj/effect/engine_setup/empty_canister/activate()
@@ -148,7 +155,7 @@
 
 // Spawns a coolant canister on this turf, if it has a connector port.
 // Triggers error when unable to locate connector port or when coolant canister type is unset.
-/obj/effect/engine_setup/coolant_canister/
+/obj/effect/engine_setup/coolant_canister
 	name = "Coolant Canister Marker"
 	var/canister_type = null
 
@@ -167,7 +174,7 @@
 
 
 // Energises the supermatter. Errors when unable to locate supermatter.
-/obj/effect/engine_setup/core/
+/obj/effect/engine_setup/core
 	name = "Supermatter Core Marker"
 	var/energy_setting = 0
 
@@ -188,7 +195,7 @@
 
 
 // Tries to enable the SMES on max input/output settings. With load balancing it should be fine as long as engine outputs at least ~500kW
-/obj/effect/engine_setup/smes/
+/obj/effect/engine_setup/smes
 	name = "SMES Marker"
 
 /obj/effect/engine_setup/smes/activate()
@@ -206,8 +213,8 @@
 
 
 
-// Sets up filters. This assumes filters are set to filter out N2 back to the core loop by default!
-/obj/effect/engine_setup/filter/
+// Sets up filters. This assumes filters are set to filter out CO2 back to the core loop by default!
+/obj/effect/engine_setup/filter
 	name = "Omni Filter Marker"
 	var/coolant = null
 
@@ -221,23 +228,26 @@
 		log_and_message_admins("## WARNING: No coolant type set at [x] [y] [z]!")
 		return SETUP_WARNING
 
-	// Non-nitrogen coolant, adjust the filter's config first.
-	if(coolant != "N2")
+	// Non-co2 coolant, adjust the filter's config first.
+	if(coolant != "CO2")
 		for(var/datum/omni_port/P in F.ports)
-			if(P.mode != ATM_N2)
+			if(P.mode != ATM_CO2)
 				continue
 			if(coolant == "PH")
 				P.mode = ATM_P
 				break
-			else if(coolant == "CO2")
-				P.mode = ATM_CO2
+			else if(coolant == "N2")
+				P.mode = ATM_N2
+				break
+			else if(coolant == "H2")
+				P.mode = ATM_H2
 				break
 			else
 				log_and_message_admins("## WARNING: Inapropriate filter coolant type set at [x] [y] [z]!")
 				return SETUP_WARNING
 		F.rebuild_filtering_list()
 
-	F.use_power = 1
+	F.update_use_power(POWER_USE_IDLE)
 	F.update_icon()
 	return SETUP_OK
 
@@ -248,4 +258,5 @@
 #undef SETUP_DELAYED
 #undef ENERGY_NITROGEN
 #undef ENERGY_CARBONDIOXIDE
+#undef ENERGY_HYDROGEN
 #undef ENERGY_PHORON
